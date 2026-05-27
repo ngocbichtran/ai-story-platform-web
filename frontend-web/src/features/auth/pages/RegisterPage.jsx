@@ -1,0 +1,276 @@
+import { useState } from "react";
+import axios from "axios";
+import { Link, useNavigate } from "react-router-dom";
+import loginImage from "../../../assets/images/login-banner.png";
+import logoImage from "../../../assets/images/logo-white.png";
+import toast from "react-hot-toast";
+
+const RegisterPage = () => {
+    const navigate = useNavigate();
+
+    const [formData, setFormData] = useState({
+        username: "",
+        email: "",
+        password: "",
+    });
+
+    const [errors, setErrors] = useState({});
+    const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    // VALIDATE
+    const validateForm = () => {
+        let newErrors = {};
+
+        // USERNAME
+        if (!formData.username.trim()) {
+            newErrors.username = "Vui lòng nhập tên tài khoản";
+        } else if (formData.username.length < 3) {
+            newErrors.username = "Tên tài khoản tối thiểu 3 ký tự";
+        }
+
+        // EMAIL
+        if (!formData.email.trim()) {
+            newErrors.email = "Vui lòng nhập email";
+        } else if (
+            !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)
+        ) {
+            newErrors.email = "Email không hợp lệ";
+        }
+
+        // PASSWORD
+        if (!formData.password) {
+            newErrors.password = "Vui lòng nhập mật khẩu";
+        } else if (formData.password.length < 6) {
+            newErrors.password = "Mật khẩu tối thiểu 6 ký tự";
+        }
+
+        setErrors(newErrors);
+
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleChange = (e) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value,
+        });
+
+        // CLEAR ERROR KHI NHẬP
+        setErrors({
+            ...errors,
+            [e.target.name]: "",
+        });
+    };
+
+    const handleRegister = async (e) => {
+        e.preventDefault();
+
+        // CHECK VALIDATE
+        if (!validateForm()) return;
+
+        try {
+            setLoading(true);
+
+            const res = await axios.post(
+                "http://localhost:4000/api/auth/register",
+                formData
+            );
+
+            toast.success("Đăng ký thành công!");
+
+            setTimeout(() => {
+                navigate("/home");
+            }, 1000);
+
+            console.log(res.data);
+
+        } catch (error) {
+            console.error(error);
+
+            toast.error(
+                error.response?.data?.message ||
+                "Đăng ký thất bại!"
+            );
+
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
+
+            {/* BACKGROUND */}
+            <img
+                src={loginImage}
+                alt="AI Story Background"
+                className="absolute inset-0 w-full h-full object-cover"
+            />
+
+            {/* OVERLAY */}
+            <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" />
+
+            {/* CARD */}
+            <div className="relative z-10 w-full max-w-[460px] mx-4 bg-white/12 backdrop-blur-2xl border border-white/20 rounded-[32px] px-6 sm:px-10 py-8 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+
+                {/* HEADER */}
+                <div className="text-center mb-2">
+
+                    <div className="flex items-center justify-center gap-3">
+
+                        {/* LOGO */}
+                        <div className="relative flex items-center justify-center">
+                            <div className="absolute inset-0 bg-white/20 blur-2xl rounded-full"></div>
+
+                            <img
+                                src={logoImage}
+                                alt="BaoStory"
+                                className="relative w-16 h-16 mt-3 object-contain drop-shadow-[0_8px_25px_rgba(255,255,255,0.35)]"
+                            />
+                        </div>
+
+                        {/* TITLE */}
+                        <h1 className="text-3xl font-black tracking-[1px] bg-gradient-to-r from-white via-orange-100 to-yellow-200 bg-clip-text text-transparent drop-shadow-[0_5px_20px_rgba(255,255,255,0.2)]">
+                            Tạo tài khoản
+                        </h1>
+
+                    </div>
+                </div>
+
+                {/* FORM */}
+                <form onSubmit={handleRegister} className="space-y-4">
+
+                    {/* USERNAME */}
+                    <div>
+
+                        <label className="mb-2 block text-sm font-semibold text-white">
+                            Tên tài khoản
+                        </label>
+
+                        <input
+                            type="text"
+                            name="username"
+                            value={formData.username}
+                            onChange={handleChange}
+                            placeholder="Nhập tên tài khoản"
+                            className={`w-full px-4 py-3.5 rounded-2xl border bg-white/10 text-white placeholder:text-gray-300 outline-none transition-all
+                            ${errors.username
+                                    ? "border-red-500 focus:ring-red-400/30"
+                                    : "border-white/20 focus:border-blue-400 focus:ring-4 focus:ring-blue-400/20"
+                                }`}
+                        />
+
+                        {errors.username && (
+                            <p className="mt-2 text-sm text-red-400">
+                                {errors.username}
+                            </p>
+                        )}
+
+                    </div>
+
+                    {/* EMAIL */}
+                    <div>
+
+                        <label className="block mb-2 text-sm font-semibold text-white">
+                            Email
+                        </label>
+
+                        <input
+                            type="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                            placeholder="Nhập email"
+                            className={`w-full px-4 py-3.5 rounded-2xl border bg-white/10 text-white placeholder:text-gray-300 outline-none transition-all
+                            ${errors.email
+                                    ? "border-red-500 focus:ring-red-400/30"
+                                    : "border-white/20 focus:border-blue-400 focus:ring-4 focus:ring-blue-400/20"
+                                }`}
+                        />
+
+                        {errors.email && (
+                            <p className="mt-2 text-sm text-red-400">
+                                {errors.email}
+                            </p>
+                        )}
+
+                    </div>
+
+                    {/* PASSWORD */}
+                    <div>
+
+                        <label className="block mb-2 text-sm font-semibold text-white">
+                            Mật khẩu
+                        </label>
+
+                        <div className="relative">
+
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                name="password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                placeholder="Nhập mật khẩu"
+                                className={`w-full px-4 py-3.5 pr-14 rounded-2xl border bg-white/10 text-white placeholder:text-gray-300 outline-none transition-all
+                                ${errors.password
+                                        ? "border-red-500 focus:ring-red-400/30"
+                                        : "border-white/20 focus:border-blue-400 focus:ring-4 focus:ring-blue-400/20"
+                                    }`}
+                            />
+
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 text-lg"
+                            >
+                                {showPassword
+                                    ? <i className="bi bi-eye-slash"></i>
+                                    : <i className="bi bi-eye"></i>}
+                            </button>
+
+                        </div>
+
+                        {errors.password && (
+                            <p className="mt-2 text-sm text-red-400">
+                                {errors.password}
+                            </p>
+                        )}
+
+                    </div>
+
+                    {/* BUTTON */}
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 hover:scale-[1.01] active:scale-[0.99] text-white font-semibold transition-all shadow-lg disabled:opacity-60"
+                    >
+                        {loading
+                            ? "Đang tạo tài khoản..."
+                            : "Tạo tài khoản"}
+                    </button>
+
+                </form>
+
+                {/* FOOTER */}
+                <div className="mt-5 text-center">
+
+                    <p className="text-sm text-gray-300">
+                        Đã có tài khoản?
+
+                        <Link
+                            to="/login"
+                            className="ml-2 font-semibold text-blue-300 hover:text-blue-200"
+                        >
+                            Đăng nhập
+                        </Link>
+                    </p>
+
+                </div>
+
+            </div>
+        </div>
+    );
+};
+
+export default RegisterPage;
