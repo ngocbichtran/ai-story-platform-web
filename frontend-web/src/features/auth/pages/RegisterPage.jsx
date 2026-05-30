@@ -73,7 +73,7 @@ const RegisterPage = () => {
             setLoading(true);
 
             const res = await axios.post(
-                "http://localhost:4000/api/auth/register",
+                "http://api.baostory.fun/api/auth/register",
                 formData
             );
 

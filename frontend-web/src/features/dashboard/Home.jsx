@@ -35,7 +35,7 @@ export default function HomePage() {
             const token = localStorage.getItem("token");
 
             const res = await axios.get(
-                "http://localhost:4000/api/auth/me",
+                "http://api.baostory.fun/api/auth/me",
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,

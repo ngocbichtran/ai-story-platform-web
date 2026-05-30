@@ -68,7 +68,7 @@ const LoginPage = () => {
             setLoading(true);
 
             const res = await axios.post(
-                "http://localhost:4000/api/auth/login",
+                "http://api.baostory.fun/api/auth/login",
                 formData
             );
             console.log(res.data);

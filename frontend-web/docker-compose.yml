@@ -1,0 +1,9 @@
+services:
+  frontend:
+    build: .
+    container_name: ai-story-frontend
+
+    ports:
+      - "5000:80"
+
+    restart: always
