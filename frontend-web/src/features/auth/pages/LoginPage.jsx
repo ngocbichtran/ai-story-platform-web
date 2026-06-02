@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { GoogleLogin } from "@react-oauth/google";
 import loginImage from "../../../assets/images/login-banner.png";
 import logoImage from "../../../assets/images/logo-white.png";
-console.log("LoginPage Render");
+
 const LoginPage = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
