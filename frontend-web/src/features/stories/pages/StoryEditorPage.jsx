@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { ArrowLeft, PanelRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
+import toast from "react-hot-toast";
 
 export default function StoryEditorPage() {
     const [activeTab, setActiveTab] = useState("draft");
@@ -26,9 +27,7 @@ export default function StoryEditorPage() {
         loadChapter(selectedChapter);
     }, [selectedChapter]);
     const loadChapter = async (chapter) => {
-        const res = await fetch(
-            `http://localhost:4000/api/chapters/display-chapter?story_id=${chapter.story_id}&chapter_number=${chapter.chapter_number}`
-        );
+        const res = await fetch(`http://localhost:4000/api/chapters/display-chapter?story_id=${chapter.story_id}&chapter_number=${chapter.chapter_number}`);
 
         const result = await res.json();
 
@@ -113,103 +112,74 @@ export default function StoryEditorPage() {
     // =========================================================================
     const handleDraftEdit = async () => {
         if (!selectedChapter) {
-            alert("Vui lòng chọn chương");
+            toast.error("Vui lòng chọn chương");
             return;
         }
 
-        const token = localStorage.getItem("token"); // đổi lại nếu key khác
+        const token = localStorage.getItem("token");
 
         if (!token) {
-            alert("Bạn chưa đăng nhập hoặc token không tồn tại");
+            toast.error("Bạn chưa đăng nhập hoặc token không tồn tại");
             return;
         }
-
-        const currentStoryId = selectedChapter.story_id;
-        const currentChapterNumber = selectedChapter.chapter_number;
-        const chapterId = selectedChapter.id;
 
         if (!draftContent.trim()) {
-            alert("Nội dung bản nháp trống, không thể biên tập!");
+            toast.error("Nội dung bản nháp trống, không thể biên tập!");
             return;
         }
+
+        const chapterSnapshot = { ...selectedChapter };
+        const currentStoryId = chapterSnapshot.story_id;
+        const currentChapterNumber = chapterSnapshot.chapter_number;
+        const chapterId = chapterSnapshot.id;
 
         setIsDraftEditing(true);
 
         try {
-            const response = await fetch(
-                `http://localhost:4000/api/chapters/${chapterId}/spell-check`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        story_id: currentStoryId,
-                        chapter_number: currentChapterNumber,
-                        content: draftContent,
-                    }),
-                }
-            );
+            const response = await fetch(`http://localhost:4000/api/chapters/${chapterId}/spell-check`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    story_id: currentStoryId,
+                    chapter_number: currentChapterNumber,
+                    content: draftContent,
+                }),
+            });
 
-            const result = await response.json();
+            let result;
+
+            try {
+                result = await response.json();
+            } catch {
+                throw new Error("Backend trả về dữ liệu không hợp lệ.");
+            }
 
             console.log("Spell Check Result:", result);
 
             if (!response.ok) {
                 throw new Error(result.message || "Không thể kích hoạt tiến trình biên tập.");
             }
-            setIsDraftEditing(false);
 
-            alert("Đã gửi yêu cầu biên tập. Vui lòng chờ vài giây...");
-
-            setTimeout(async () => {
-                await loadChapter(selectedChapter);
-                setActiveTab("final");
-            }, 5000);
-
-            return;
-            // Nếu backend đã trả về nội dung đã sửa
-            if (result?.data?.polished_content) {
-                setDraftContent(result.data.polished_content);
-
-                alert("BaoStory đã biên tập thành công!");
-
-                setIsDraftEditing(false);
-                return;
-            }
-
-            // Nếu workflow n8n chạy async và lưu vào MongoDB
+            // Chờ n8n xử lý xong rồi tải lại chương
             setTimeout(async () => {
                 try {
-                    const displayResponse = await fetch(
-                        `http://localhost:4000/api/chapters/display-chapter?story_id=${currentStoryId}&chapter_number=${currentChapterNumber}`
-                    );
+                    await loadChapter(chapterSnapshot);
+                    setActiveTab("final");
 
-                    const displayData = await displayResponse.json();
-
-                    if (
-                        displayResponse.ok &&
-                        displayData.success &&
-                        displayData.data
-                    ) {
-                        setDraftContent(
-                            displayData.data.displayContent || ""
-                        );
-
-                        alert(
-                            "BaoStory đã chuốt chữ và sửa lỗi chính tả thành công!"
-                        );
-                    }
+                    toast.success("Biên tập thành công");
                 } catch (err) {
                     console.error("Lỗi khi tải lại chương:", err);
+                    toast.error("Đã gửi yêu cầu nhưng không thể tải lại dữ liệu.");
                 } finally {
                     setIsDraftEditing(false);
                 }
-            }, 3000);
+            }, 500);
         } catch (error) {
             console.error(error);
-            alert(error.message);
+            toast.error(error.message || "Có lỗi xảy ra.");
             setIsDraftEditing(false);
         }
     };

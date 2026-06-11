@@ -3,6 +3,7 @@ import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
 import HomePage from "./features/dashboard/Home";
 import CreateStory from "./features/stories/pages/CreateStory.jsx";
+import DetailStory from "./features/stories/pages/StoryDetail.jsx";
 import StoryEditorPage from "./features/stories/pages/StoryEditorPage";
 import StoryList from "./features/stories/pages/StoryList";
 import MainLayout from "./features/dashboard/layouts/MainLayouts.jsx";
@@ -25,6 +26,8 @@ function App() {
                 <Route path="/stories/create" element={<CreateStory />} />
                 {/* StoryEditorPage */}
                 <Route path="/stories/:storyId/editor" element={<StoryEditorPage />} />
+                {/* Detail Story */}
+                <Route path="/stories/detail" element={<DetailStory />} />
             </Routes>
         </BrowserRouter>
     );

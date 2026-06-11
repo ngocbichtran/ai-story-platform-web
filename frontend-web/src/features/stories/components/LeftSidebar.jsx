@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { ArrowLeft, BookOpen, Layers, Users, FolderHeart, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios"; // Đảm bảo đã cài đặt axios (hoặc dùng fetch thay thế)
-
+import toast from "react-hot-toast";
+import { Link } from "react-router-dom";
 export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter }) {
     const [chaptersList, setChaptersList] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -11,15 +12,32 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
     const navigate = useNavigate();
     const [story, setStory] = useState(null);
     const navItems = [
-        { id: "overview", label: "Tổng quan", icon: <Layers size={15} /> },
-        { id: "world", label: "Thế giới", icon: <FolderHeart size={15} /> },
-        { id: "characters", label: "Nhân vật", icon: <Users size={15} /> },
+        {
+            id: "overview",
+            label: "Tổng quan",
+            path: "/stoies/detail",
+            icon: <Layers size={15} />,
+        },
+        {
+            id: "world",
+            label: "Thế giới",
+            path: "/story/world",
+            icon: <FolderHeart size={15} />,
+        },
+        {
+            id: "characters",
+            label: "Nhân vật",
+            path: "/story/characters",
+            icon: <Users size={15} />,
+        },
     ];
     const [showCreateChapterModal, setShowCreateChapterModal] = useState(false);
     const [chapterTitle, setChapterTitle] = useState("");
+
+    // Tạo chương
     const handleCreateChapter = async () => {
         if (!chapterTitle.trim()) {
-            alert("Vui lòng nhập tên chương");
+            toast.error("Vui lòng nhập tên chương");
             return;
         }
 
@@ -47,10 +65,10 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             setChapterTitle("");
             setShowCreateChapterModal(false);
 
-            alert("Tạo chương thành công!");
+            toast.success("Tạo chương thành công!");
         } catch (error) {
             console.error(error);
-            alert("Tạo chương thất bại");
+            toast.error("Tạo chương thất bại");
         }
     };
     // Gọi API để lấy danh sách chương khi component mount hoặc storyId thay đổi
@@ -96,17 +114,10 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             {/* 3. MENU ĐIỀU HƯỚNG TỔNG QUAN */}
             <div className="flex-none rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-1.5 space-y-0.5">
                 {navItems.map((item) => (
-                    <button
-                        key={item.id}
-                        onClick={() => {
-                            setActiveNav(item.id);
-                            setActiveChapter(null);
-                        }}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs md:text-sm font-medium transition duration-150 ${activeNav === item.id ? "bg-[#1d2433] text-[#a7c8ff] font-bold border-l-2 border-[#0571d3] pl-2.5 shadow-md shadow-black/20" : "text-[#c1c6d5] hover:bg-[#181d29] hover:text-white"}`}
-                    >
+                    <Link key={item.id} to={item.path} onClick={() => setActiveChapter(null)} className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs md:text-sm font-medium transition duration-150 ${activeNav === item.id ? "bg-[#1d2433] text-[#a7c8ff] font-bold border-l-2 border-[#0571d3] pl-2.5 shadow-md shadow-black/20" : "text-[#c1c6d5] hover:bg-[#181d29] hover:text-white"}`}>
                         <span className={activeNav === item.id ? "text-[#a7c8ff]" : "text-[#8b919e]"}>{item.icon}</span>
                         <span>{item.label}</span>
-                    </button>
+                    </Link>
                 ))}
             </div>
             {/* 4. DANH SÁCH CHƯƠNG TỰ CO GIÃN THÔNG MINH */}
@@ -135,7 +146,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
 
                                         setSelectedChapter(chapter);
 
-                                        setActiveTab("outline");
+                                        setActiveTab("draft");
                                     }}
                                     className={`w-full text-left px-3 py-2 rounded-xl text-xs md:text-sm transition duration-150 ${activeChapter === chapterId ? "bg-[#1d2433] text-[#a7c8ff] font-bold shadow-sm border border-white/5" : "text-[#c1c6d5] hover:bg-[#181d29] hover:text-white"}`}
                                 >

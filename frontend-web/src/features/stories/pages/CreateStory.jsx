@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BookOpen, ArrowLeft, Loader2, Forward, Lightbulb } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
+import toast from "react-hot-toast";
 export default function CreateStory() {
     const [title, setTitle] = useState("");
     const [summary, setSummary] = useState("");
@@ -38,9 +38,9 @@ export default function CreateStory() {
     // LUỒNG TẠO TRUYỆN THUẦN - ĐÃ THIẾT KẾ SẴN LUỒNG 2 BƯỚC (CHẠY NGẦM)
     // =========================================================================
     const handleCreate = async () => {
-        if (!title.trim()) return alert("Vui lòng nhập tên truyện!");
-        if (!summary.trim()) return alert("Vui lòng nhập mô tả cốt truyện!");
-        if (selectedGenres.length === 0) return alert("Vui lòng chọn thể loại truyện!");
+        if (!title.trim()) return toast.error("Vui lòng nhập tên truyện!");
+        if (!summary.trim()) return toast.error("Vui lòng nhập mô tả cốt truyện!");
+        if (selectedGenres.length === 0) return toast.error("Vui lòng chọn thể loại truyện!");
 
         setIsCreating(true);
         try {
@@ -87,14 +87,14 @@ export default function CreateStory() {
 
             const approveResult = await approveResponse.json();
             if (approveResponse.ok && approveResult.success) {
-                alert("Chúc mừng! Tác phẩm mới đã được khởi tạo thành công trên BaoStory.");
+                toast.success("Chúc mừng! Tác phẩm mới đã được khởi tạo thành công trên BaoStory.");
                 navigate("/stories");
             } else {
-                alert(approveResult.message || "Không thể khởi tạo cấu trúc phân hồi.");
+                toast.error(approveResult.message || "Không thể khởi tạo cấu trúc phân hồi.");
             }
         } catch (error) {
             console.error("Lỗi tạo truyện:", error);
-            alert(error.message || "Lỗi hệ thống khi khởi tạo truyện.");
+            toast.error(error.message || "Lỗi hệ thống khi khởi tạo truyện.");
         } finally {
             setIsCreating(false);
         }
