@@ -26,12 +26,20 @@ export default function StoryEditorPage() {
         loadChapter(selectedChapter);
     }, [selectedChapter]);
     const loadChapter = async (chapter) => {
-        const res = await fetch(`http://localhost:4000/api/chapters/display-chapter?story_id=${chapter.story_id}&chapter_number=${chapter.chapter_number}`);
+        const res = await fetch(
+            `http://localhost:4000/api/chapters/display-chapter?story_id=${chapter.story_id}&chapter_number=${chapter.chapter_number}`
+        );
 
         const result = await res.json();
 
+        console.log("Chapter Data:", result);
+
         if (result.success) {
-            setDraftContent(result.data.displayContent || "");
+            setDraftContent(result.data.content || "");
+            setFinalContent(result.data.displayContent || "");
+        } else {
+            setDraftContent("");
+            setFinalContent("");
         }
     };
     // =========================================================================
@@ -104,58 +112,104 @@ export default function StoryEditorPage() {
     // N8N 3: DÀNH RIÊNG CHO NÚT "BIÊN TẬP CÙNG BAOSTORY" (XỬ LÝ VĂN BẢN TRONG TAB DRAFT)
     // =========================================================================
     const handleDraftEdit = async () => {
-        // Định nghĩa cứng hoặc truyền động ID truyện & số chương theo đúng thiết kế của bạn
-        const currentStoryId = 1;
-        const currentChapterNumber = 1;
-        const chapterId = 1; // ID mục lục của MySQL để cập nhật trạng thái bài viết
+        if (!selectedChapter) {
+            alert("Vui lòng chọn chương");
+            return;
+        }
 
-        if (!draftContent.trim()) return alert("Nội dung bản nháp trống, không thể biên tập!");
+        const token = localStorage.getItem("token"); // đổi lại nếu key khác
+
+        if (!token) {
+            alert("Bạn chưa đăng nhập hoặc token không tồn tại");
+            return;
+        }
+
+        const currentStoryId = selectedChapter.story_id;
+        const currentChapterNumber = selectedChapter.chapter_number;
+        const chapterId = selectedChapter.id;
+
+        if (!draftContent.trim()) {
+            alert("Nội dung bản nháp trống, không thể biên tập!");
+            return;
+        }
 
         setIsDraftEditing(true);
 
         try {
-            // 1. KÍCH HOẠT TIẾN TRÌNH: Bắn POST lên Backend để lưu thô MongoDB và kích hoạt n8n
-            const triggerResponse = await fetch(`http://localhost:4000/api/chapters/${chapterId}/spell-check`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    story_id: currentStoryId,
-                    chapter_number: currentChapterNumber,
-                    content: draftContent, // Văn bản thô hiện tại trong textarea
-                }),
-            });
+            const response = await fetch(
+                `http://localhost:4000/api/chapters/${chapterId}/spell-check`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        story_id: currentStoryId,
+                        chapter_number: currentChapterNumber,
+                        content: draftContent,
+                    }),
+                }
+            );
 
-            if (!triggerResponse.ok) {
-                throw new Error("Không thể kích hoạt tiến trình biên tập ngầm.");
+            const result = await response.json();
+
+            console.log("Spell Check Result:", result);
+
+            if (!response.ok) {
+                throw new Error(result.message || "Không thể kích hoạt tiến trình biên tập.");
+            }
+            setIsDraftEditing(false);
+
+            alert("Đã gửi yêu cầu biên tập. Vui lòng chờ vài giây...");
+
+            setTimeout(async () => {
+                await loadChapter(selectedChapter);
+                setActiveTab("final");
+            }, 5000);
+
+            return;
+            // Nếu backend đã trả về nội dung đã sửa
+            if (result?.data?.polished_content) {
+                setDraftContent(result.data.polished_content);
+
+                alert("BaoStory đã biên tập thành công!");
+
+                setIsDraftEditing(false);
+                return;
             }
 
-            // 2. CHỜ ĐỒNG BỘ: n8n cần khoảng 2-3s để gọi AI chuốt chữ và lưu đè vào MongoDB Atlas
-            // Ta dùng setTimeout để trì hoãn việc gọi hàm hiển thị
+            // Nếu workflow n8n chạy async và lưu vào MongoDB
             setTimeout(async () => {
                 try {
-                    // 3. LẤY DỮ LIỆU SẠCH: Gọi API GET mới tách sang QueryController
-                    const queryUrl = `http://localhost:4000/api/chapters/display-chapter?story_id=${currentStoryId}&chapter_number=${currentChapterNumber}`;
-                    const displayResponse = await fetch(queryUrl, { method: "GET" });
+                    const displayResponse = await fetch(
+                        `http://localhost:4000/api/chapters/display-chapter?story_id=${currentStoryId}&chapter_number=${currentChapterNumber}`
+                    );
 
-                    if (displayResponse.ok) {
-                        const result = await displayResponse.json();
-                        if (result.success && result.data) {
-                            // Cập nhật chữ đã sạch lỗi chính tả trực tiếp vào Textarea
-                            setDraftContent(result.data.displayContent);
-                            alert("BaoStory đã chuốt chữ và sửa lỗi chính tả thành công!");
-                        }
-                    } else {
-                        alert("Biên tập hoàn tất ngầm nhưng không thể tải lại nội dung mới.");
+                    const displayData = await displayResponse.json();
+
+                    if (
+                        displayResponse.ok &&
+                        displayData.success &&
+                        displayData.data
+                    ) {
+                        setDraftContent(
+                            displayData.data.displayContent || ""
+                        );
+
+                        alert(
+                            "BaoStory đã chuốt chữ và sửa lỗi chính tả thành công!"
+                        );
                     }
                 } catch (err) {
-                    console.error("Lỗi khi fetch nội dung mới:", err);
+                    console.error("Lỗi khi tải lại chương:", err);
                 } finally {
-                    setIsDraftEditing(false); // Mở khóa Textarea
+                    setIsDraftEditing(false);
                 }
-            }, 3000); // 3000ms = 3 giây chờ lý tưởng cho AI gpt-4o-mini xử lý chữ
+            }, 3000);
         } catch (error) {
             console.error(error);
-            alert("Lỗi kết nối máy chủ khi xử lý biên tập văn bản.");
+            alert(error.message);
             setIsDraftEditing(false);
         }
     };
