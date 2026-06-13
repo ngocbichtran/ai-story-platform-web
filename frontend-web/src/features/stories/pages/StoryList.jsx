@@ -14,7 +14,7 @@ export default function StoryList() {
         const fetchStoriesData = async () => {
             setIsLoading(true);
             try {
-                const response = await fetch("http://localhost:4000/api/chapters/stories", {
+                const response = await fetch("https://api.baostory.fun/api/chapters/stories", {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",

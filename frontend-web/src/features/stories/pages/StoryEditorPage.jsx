@@ -27,7 +27,7 @@ export default function StoryEditorPage() {
         loadChapter(selectedChapter);
     }, [selectedChapter]);
     const loadChapter = async (chapter) => {
-        const res = await fetch(`http://localhost:4000/api/chapters/display-chapter?story_id=${chapter.story_id}&chapter_number=${chapter.chapter_number}`);
+        const res = await fetch(`https://api.baostory.fun/api/chapters/display-chapter?story_id=${chapter.story_id}&chapter_number=${chapter.chapter_number}`);
 
         const result = await res.json();
 
@@ -136,7 +136,7 @@ export default function StoryEditorPage() {
         setIsDraftEditing(true);
 
         try {
-            const response = await fetch(`http://localhost:4000/api/chapters/${chapterId}/spell-check`, {
+            const response = await fetch(`https://api.baostory.fun/api/chapters/${chapterId}/spell-check`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

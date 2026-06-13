@@ -45,7 +45,7 @@ export default function CreateStory() {
         setIsCreating(true);
         try {
             // Bước 1: Khởi tạo thông tin cơ bản bộ truyện (vào bảng stories và story_genres)
-            const initResponse = await fetch("http://localhost:4000/api/stories/init", {
+            const initResponse = await fetch("https://api.baostory.fun/api/stories/init", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -73,7 +73,7 @@ export default function CreateStory() {
             ];
 
             // Gọi API phê duyệt/lưu cấu trúc phân hồi xuống MySQL
-            const approveResponse = await fetch("http://localhost:4000/api/stories/approve-planning", {
+            const approveResponse = await fetch("https://api.baostory.fun/api/stories/approve-planning", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

@@ -42,7 +42,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
         }
 
         try {
-            const response = await fetch("http://localhost:4000/api/chapters/create", {
+            const response = await fetch("https://api.baostory.fun/api/chapters/create", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -77,7 +77,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             try {
                 setLoading(true);
 
-                const [storyRes, chaptersRes] = await Promise.all([axios.get(`http://localhost:4000/api/stories/${storyId}`), axios.get(`http://localhost:4000/api/chapters/story-chapters?story_id=${storyId}`)]);
+                const [storyRes, chaptersRes] = await Promise.all([axios.get(`https://api.baostory.fun/api/stories/${storyId}`), axios.get(`https://api.baostory.fun/api/chapters/story-chapters?story_id=${storyId}`)]);
 
                 setStory(storyRes.data.data);
                 setChaptersList(chaptersRes.data.data || []);
