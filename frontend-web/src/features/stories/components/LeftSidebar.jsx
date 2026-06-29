@@ -15,7 +15,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
         {
             id: "overview",
             label: "Tổng quan",
-            path: "/stoies/detail",
+            path: `/stories/${storyId}/edit/overview`,
             icon: <Layers size={15} />,
         },
         {
@@ -114,7 +114,15 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             {/* 3. MENU ĐIỀU HƯỚNG TỔNG QUAN */}
             <div className="flex-none rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-1.5 space-y-0.5">
                 {navItems.map((item) => (
-                    <Link key={item.id} to={item.path} onClick={() => setActiveChapter(null)} className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs md:text-sm font-medium transition duration-150 ${activeNav === item.id ? "bg-[#1d2433] text-[#a7c8ff] font-bold border-l-2 border-[#0571d3] pl-2.5 shadow-md shadow-black/20" : "text-[#c1c6d5] hover:bg-[#181d29] hover:text-white"}`}>
+                    <Link
+                        key={item.id}
+                        to={item.path}
+                        onClick={() => {
+                            setActiveChapter(null);
+                            setActiveNav(item.id);
+                        }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs md:text-sm font-medium transition duration-150 ${activeNav === item.id ? "bg-[#1d2433] text-[#a7c8ff] font-bold border-l-2 border-[#0571d3] pl-2.5 shadow-md shadow-black/20" : "text-[#c1c6d5] hover:bg-[#181d29] hover:text-white"}`}
+                    >
                         <span className={activeNav === item.id ? "text-[#a7c8ff]" : "text-[#8b919e]"}>{item.icon}</span>
                         <span>{item.label}</span>
                     </Link>

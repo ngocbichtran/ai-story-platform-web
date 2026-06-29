@@ -1,11 +1,26 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logoImage from "../assets/images/logo-white.png";
-import { Search, LogOut, User } from "lucide-react";
+import { Search, User, LogOut, LockKeyhole, ChevronDown } from "lucide-react";
 
 export default function Header({ currentUser, search, setSearch, handleLogout }) {
     const location = useLocation();
+    const [showDropdown, setShowDropdown] = useState(false);
 
+    const dropdownRef = useRef(null);
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setShowDropdown(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
     // Cụm Menu điều hướng từ HeroNavbar chuyển qua
     const navItems = [
         { name: "Trang chủ", path: "/home" },
@@ -67,7 +82,7 @@ export default function Header({ currentUser, search, setSearch, handleLogout })
 
                 {/* 2. CỤM PHẢI: THANH TÌM KIẾM THU NHỎ + THÔNG TIN USER */}
                 <div className="flex items-center gap-4 flex-1 justify-end">
-                    {/* SEARCH - Đã bóp nhỏ kích thước lại (max-w-[240px] hoặc tùy bạn chỉnh) */}
+                    {/* SEARCH - Đã bóp nhỏ kích thước lại max-w-[240px]*/}
                     <div className="relative w-full max-w-[240px] hidden lg:block focus-within:max-w-[280px] transition-all duration-300">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
@@ -89,29 +104,77 @@ export default function Header({ currentUser, search, setSearch, handleLogout })
                         />
                     </div>
 
-                    {/* USER INFO */}
-                    <div className="hidden sm:flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl backdrop-blur-md">
-                        <User className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="text-xs font-medium text-slate-200">{currentUser?.username}</span>
-                    </div>
+                    {/* USER DROPDOWN */}
+                    <div className="relative" ref={dropdownRef}>
+                        <button
+                            onClick={() => setShowDropdown(!showDropdown)}
+                            className="hidden sm:flex items-center gap-2 bg-white/5 border border-white/10
+            px-3 py-1.5
+            rounded-xl
+            backdrop-blur-md
+            hover:bg-white/10
+            transition-all
+        "
+                        >
+                            <User className="w-4 h-4 text-slate-400" />
 
-                    {/* NÚT ĐĂNG XUẤT */}
-                    <button
-                        onClick={handleLogout}
-                        className="
-                            h-10 px-3.5 rounded-xl
-                            border border-white/10
-                            bg-white/5
-                            text-slate-300
-                            hover:bg-red-500/10
-                            hover:text-red-400
-                            transition-all duration-300
-                            flex items-center gap-2
-                        "
-                    >
-                        <LogOut className="w-4 h-4" />
-                        <span className="hidden sm:block text-xs font-medium">Đăng xuất</span>
-                    </button>
+                            <span className="text-xs font-medium text-slate-200">{currentUser?.username}</span>
+
+                            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showDropdown ? "rotate-180" : ""}`} />
+                        </button>
+
+                        {showDropdown && (
+                            <div
+                                className="
+                absolute
+                right-0
+                top-12
+                w-56
+
+                rounded-xl
+                border border-white/10
+                bg-[#0B1120]/95
+                backdrop-blur-xl
+
+                shadow-2xl
+
+                overflow-hidden
+                z-50
+            "
+                            >
+                                {/* User */}
+                                <div className="px-4 py-3 border-b border-white/10">
+                                    <p className="text-sm font-semibold text-white">{currentUser?.username}</p>
+
+                                    <p className="text-xs text-slate-400 truncate">{currentUser?.email}</p>
+                                </div>
+
+                                {/* Logout */}
+                                <button
+                                    onClick={() => {
+                                        setShowDropdown(false);
+                                        handleLogout();
+                                    }}
+                                    className="
+                    w-full
+
+                    flex items-center gap-3
+
+                    px-4 py-3
+
+                    text-sm text-red-400
+
+                    hover:bg-red-500/10
+
+                    transition-all
+                "
+                                >
+                                    <LogOut className="w-4 h-4" />
+                                    Đăng xuất
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </header>
