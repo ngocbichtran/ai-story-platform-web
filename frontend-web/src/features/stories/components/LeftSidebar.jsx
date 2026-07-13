@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, BookOpen, Layers, Users, FolderHeart, Plus } from "lucide-react";
+import { ArrowLeft, BookOpen, Layers, Users, FolderHeart, Plus, ScrollText, Clapperboard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios"; // Đảm bảo đã cài đặt axios (hoặc dùng fetch thay thế)
 import toast from "react-hot-toast";
@@ -15,20 +15,32 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
         {
             id: "overview",
             label: "Tổng quan",
-            path: `/stories/${storyId}/edit/overview`,
+            path: `/stories/${storyId}/editor/overview`,
             icon: <Layers size={15} />,
         },
         {
             id: "world",
             label: "Thế giới",
-            path: "/story/world",
+            path: `/stories/${storyId}/editor/worlds`, // <-- sửa
             icon: <FolderHeart size={15} />,
         },
         {
             id: "characters",
             label: "Nhân vật",
-            path: "/story/characters",
+            path: `/stories/${storyId}/editor/characters`,
             icon: <Users size={15} />,
+        },
+        {
+            id: "plot",
+            label: "Cốt truyện",
+            path: `/stories/${storyId}/editor/plot`,
+            icon: <ScrollText size={15} />,
+        },
+        {
+            id: "plan",
+            label: "Kế hoạch",
+            path: `/stories/${storyId}/editor/plan`,
+            icon: <Clapperboard size={16} />,
         },
     ];
     const [showCreateChapterModal, setShowCreateChapterModal] = useState(false);
@@ -77,7 +89,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             try {
                 setLoading(true);
 
-                const [storyRes, chaptersRes] = await Promise.all([axios.get(`https://api.baostory.fun/api/stories/${storyId}`), axios.get(`https://api.baostory.fun/api/chapters/story-chapters?story_id=${storyId}`)]);
+                const [storyRes, chaptersRes] = await Promise.all([axios.get(`http://localhost:4000/api/stories/${storyId}`), axios.get(`http://localhost:4000/api/chapters/story-chapters?story_id=${storyId}`)]);
 
                 setStory(storyRes.data.data);
                 setChaptersList(chaptersRes.data.data || []);
@@ -94,7 +106,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
     return (
         <aside className="h-full max-h-full flex flex-col gap-2.5 select-none overflow-hidden">
             {/* 1. NÚT BACK QUAY LẠI TRANG TRƯỚC */}
-            <button onClick={() => navigate(-1)} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-white bg-slate-950/20 hover:bg-slate-950/40 border border-white/5 transition duration-150 active:scale-[0.98] group flex-none" title="Quay lại trang trước">
+            <button onClick={() => navigate("/home")} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-white bg-slate-950/20 hover:bg-slate-950/40 border border-white/5 transition duration-150 active:scale-[0.98] group flex-none" title="Quay lại trang trước">
                 <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform text-slate-400 group-hover:text-white" />
                 <span>Quay lại</span>
             </button>
@@ -146,17 +158,16 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
 
                             return (
                                 <button
-                                    key={chapterId}
+                                    key={chapter.id}
                                     onClick={() => {
-                                        console.log("Clicked:", chapter.id);
+                                        console.log("Clicked:", chapter.chapterNumber);
 
-                                        setActiveChapter(chapter.id);
-
+                                        setActiveChapter(chapter.chapterNumber);
                                         setSelectedChapter(chapter);
 
-                                        setActiveTab("draft");
+                                        navigate(`/stories/${storyId}/editor/chapter/${chapter.chapterNumber}`);
                                     }}
-                                    className={`w-full text-left px-3 py-2 rounded-xl text-xs md:text-sm transition duration-150 ${activeChapter === chapterId ? "bg-[#1d2433] text-[#a7c8ff] font-bold shadow-sm border border-white/5" : "text-[#c1c6d5] hover:bg-[#181d29] hover:text-white"}`}
+                                    className={`w-full text-left px-3 py-2 rounded-xl text-xs md:text-sm transition duration-150 ${activeChapter === chapter.chapterNumber ? "bg-[#1d2433] text-[#a7c8ff] font-bold shadow-sm border border-white/5" : "text-[#c1c6d5] hover:bg-[#181d29] hover:text-white"}`}
                                 >
                                     <span className="block truncate" title={chapterTitle}>
                                         {chapterTitle}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpen, ArrowLeft, Loader2, Save, Lightbulb } from "lucide-react";
+import { BookOpen, ArrowLeft, Loader2, Save, Lightbulb, Copy, CopyCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -23,7 +23,7 @@ export default function EditStory() {
 
     const [title, setTitle] = useState("");
     const [summary, setSummary] = useState("");
-
+    const [copied, setCopied] = useState("");
     const [storyPlanning, setStoryPlanning] = useState("");
 
     const [isSaving, setIsSaving] = useState(false);
@@ -60,7 +60,23 @@ export default function EditStory() {
             title: "Ma Đạo",
         },
     ];
+    const handleCopy = async (type, text) => {
+        if (!text) return;
 
+        try {
+            await navigator.clipboard.writeText(text);
+
+            setCopied(type);
+
+            toast.success("Đã sao chép!");
+
+            setTimeout(() => {
+                setCopied("");
+            }, 1500);
+        } catch {
+            toast.error("Không thể sao chép.");
+        }
+    };
     // =========================
     // LOAD MOCK STORY
     // =========================
@@ -212,6 +228,7 @@ export default function EditStory() {
                             </div>
 
                             {/* AI REVERSE */}
+                            {/* AI REVERSE */}
                             <div className="space-y-4">
                                 <div className="flex gap-3">
                                     <select value={selectedStory} onChange={(e) => setSelectedStory(e.target.value)} className="flex-1 h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white outline-none focus:border-violet-500">
@@ -224,12 +241,71 @@ export default function EditStory() {
                                         ))}
                                     </select>
 
-                                    <button type="button" className="h-12 whitespace-nowrap rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 font-semibold hover:scale-[1.02] active:scale-95 transition">
+                                    <button type="button" className="h-12 whitespace-nowrap rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 font-semibold transition hover:scale-[1.02] active:scale-95">
                                         Đảo ngược
                                     </button>
                                 </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="relative">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleCopy("original", reverseIdea)}
+                                            className="
+        absolute
+        top-3
+        right-3
+        z-10
+        flex
+        items-center
+        justify-center
+        w-9
+        h-9
+        rounded-lg
+        border
+        border-white/10
+        bg-black/40
+        text-slate-400
+        hover:bg-violet-600
+        hover:text-white
+        transition-all
+    "
+                                        >
+                                            {copied === "original" ? <CopyCheck size={18} /> : <Copy size={18} />}
+                                        </button>
 
-                                <textarea readOnly value={reverseIdea} placeholder="Ý tưởng đảo ngược sẽ xuất hiện tại đây..." className="h-44 w-full resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-white placeholder:text-slate-500 outline-none focus:border-violet-500" />
+                                        <textarea readOnly value={reverseIdea} placeholder="Ý tưởng gốc..." className="h-40 w-full pr-24 custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4" />
+                                    </div>
+
+                                    <div className="relative">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleCopy("reverse", storyPlanning)}
+                                            className="
+        absolute
+        top-3
+        right-3
+        z-10
+        flex
+        items-center
+        justify-center
+        w-9
+        h-9
+        rounded-lg
+        border
+        border-white/10
+        bg-black/40
+        text-slate-400
+        hover:bg-violet-600
+        hover:text-white
+        transition-all
+    "
+                                        >
+                                            {copied === "reverse" ? <CopyCheck size={18} /> : <Copy size={18} />}
+                                        </button>
+
+                                        <textarea readOnly value={storyPlanning} placeholder="Ý tưởng đảo ngược..." className="h-40 w-full pr-24 custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>{" "}

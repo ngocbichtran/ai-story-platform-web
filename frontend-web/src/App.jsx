@@ -1,50 +1,94 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+//auth
 import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
 import ForgotPasswordPage from "./features/auth/pages/ForgotPasswordPage";
+import ChangePasswordPage from "./features/dashboard/pages/ChangePasswordPage";
+
+//Khung main
 import HomePage from "./features/dashboard/Home";
-import CreateStory from "./features/stories/pages/CreateStory.jsx";
-import EditStory from "./features/stories/pages/EditStory.jsx";
-import DetailStory from "./features/stories/pages/StoryDetail.jsx";
-import StoryEditorPage from "./features/stories/pages/StoryEditorPage";
-import ChapterEditorPage from "./features/stories/pages/ChapterEditorPage";
+import MainLayout from "./features/dashboard/layouts/MainLayouts";
+
+//Stories
+import StoryEditorPage from "./features/stories/pages/StoryEditorPage"; //layout
 import OverviewPage from "./features/stories/pages/OverviewPage";
 import StoryList from "./features/stories/pages/StoryList";
-import ChangePasswordPage from "./features/dashboard/pages/ChangePasswordPage";
-import MainLayout from "./features/dashboard/layouts/MainLayouts.jsx";
+import CreateStory from "./features/stories/pages/CreateStory";
+import EditStory from "./features/stories/pages/EditStory";
+import DetailStory from "./features/stories/pages/StoryDetail";
+
+//chapters
+import ChapterEditorPage from "./features/stories/pages/chapters/ChapterEditorPage";
+import ChapterDetail from "./features/stories/pages/chapters/ChapterDetail";
+
+//worlds
+import WorldListPage from "./features/stories/pages/worlds/WorldListPage";
+import EditWorldPage from "./features/stories/pages/worlds/EditWorldPage";
+import CreateWorldPage from "./features/stories/pages/worlds/CreateWorldPage";
+import DetailWorldPage from "./features/stories/pages/worlds/DetailWorldPage";
+
+//characters
+import CharacterListPage from "./features/stories/pages/characters/CharacterListPage";
+import CreateCharacterPage from "./features/stories/pages/characters/CreateCharacterPage";
+import CharacterDetailPage from "./features/stories/pages/characters/CharacterDetailPage";
+import EditCharacterPage from "./features/stories/pages/characters/EditCharacterPage";
+
+//plots
+import PlotList from "./features/stories/pages/plots/PlotList";
+
+//plans
+import ChapterSceneManager from "./features/stories/pages/plans/PlanDetail";
+
 function App() {
     return (
         <BrowserRouter>
             <Routes>
-                {/* DEFAULT */}
+                {/* Default */}
                 <Route path="/" element={<Navigate to="/login" replace />} />
-                {/* LOGIN */}
+
+                {/* Auth */}
                 <Route path="/login" element={<LoginPage />} />
-                {/* REGISTER */}
                 <Route path="/register" element={<RegisterPage />} />
-                {/* FORGOTPASSWORD */}
                 <Route path="/forgotPassword" element={<ForgotPasswordPage />} />
-                {/* CẤU TRÚC LAYOUT CỐ ĐỊNH*/}
+
+                {/* Dashboard */}
                 <Route element={<MainLayout />}>
                     <Route path="/home" element={<HomePage />} />
                     <Route path="/stories" element={<StoryList />} />
                     <Route path="/changePassword" element={<ChangePasswordPage />} />
                 </Route>
 
-                {/* Create Story */}
-                <Route path="/stories/create" element={<CreateStory />} />
-                {/* Edit Story */}
-                <Route path="/stories/:storyId/edit" element={<EditStory />} />
-                {/* StoryEditorPage */}
+                {/* Story Editor - Cac router nay la outlet (khung phai) trong StoryEditorPage */}
                 <Route path="/stories/:storyId/editor" element={<StoryEditorPage />}>
                     <Route index element={<Navigate to="overview" replace />} />
-
                     <Route path="overview" element={<OverviewPage />} />
-
-                    <Route path="chapter/:chapterId" element={<ChapterEditorPage />} />
+                    <Route path="worlds" element={<WorldListPage />} />
+                    <Route path="chapter/:chapterNumber" element={<ChapterDetail />} />
+                    <Route path="characters" element={<CharacterListPage />} />
+                    <Route path="plot" element={<PlotList />} />
                 </Route>
-                {/* Detail Story */}
+
+                {/* Story */}
+                <Route path="/stories/create" element={<CreateStory />} />
+                <Route path="/stories/:storyId/edit" element={<EditStory />} />
                 <Route path="/stories/detail" element={<DetailStory />} />
+
+                {/* Worlds */}
+                <Route path="/stories/:storyId/worlds/create" element={<CreateWorldPage />} />
+                <Route path="/stories/:storyId/editor/worlds/:worldId" element={<DetailWorldPage />} />
+                <Route path="/stories/:storyId/editor/worlds/:worldId/edit" element={<EditWorldPage />} />
+
+                {/* Characters */}
+                <Route path="/stories/:storyId/editor/characters/:characterId" element={<CharacterDetailPage />} />
+                <Route path="/stories/:storyId/editor/characters/create" element={<CreateCharacterPage />} />
+                <Route path="/stories/:storyId/editor/characters/edit/:characterId" element={<EditCharacterPage />} />
+
+                {/* Plots */}
+                {/* Plans */}
+                <Route path="/stories/:storyId/editor/plan" element={<ChapterSceneManager />} />
+
+                {/* Chapters */}
+                <Route path="/stories/:storyId/editor/chapter/:chapterNumber/edit" element={<ChapterEditorPage />} />
             </Routes>
         </BrowserRouter>
     );

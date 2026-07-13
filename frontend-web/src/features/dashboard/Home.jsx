@@ -64,7 +64,7 @@ export default function Home() {
             </section>
 
             {/* AUTHORS TEAM */}
-            <div className="relative flex items-center justify-center py-2">
+            {/* <div className="relative flex items-center justify-center py-2">
                 <div className="absolute w-full h-[1px] bg-white/10" />
                 <div className="relative z-10 px-5 py-1 bg-[#090d1a] border border-white/5 rounded-full text-center">
                     <p className="text-slate-500 text-[8px] tracking-[0.25em] uppercase mb-[2px]">Created By</p>
@@ -74,7 +74,7 @@ export default function Home() {
                         Nguyễn Trí Hào
                     </h3>
                 </div>
-            </div>
+            </div> */}
 
             {/* SECTION TITLE & COUNTER */}
             <div className="flex items-end justify-between border-b border-white/5 pb-2">

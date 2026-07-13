@@ -1,5 +1,4 @@
 import LeftSidebar from "../components/LeftSidebar";
-import RightSidebar from "../components/RightSidebar";
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, PanelRight } from "lucide-react";
 import { Outlet, useNavigate, useParams } from "react-router-dom";
@@ -26,18 +25,13 @@ export default function StoryEditorPage() {
         loadChapter(selectedChapter);
     }, [selectedChapter]);
     const loadChapter = async (chapter) => {
-        const res = await fetch(`https://api.baostory.fun/api/chapters/display-chapter?story_id=${chapter.story_id}&chapter_number=${chapter.chapter_number}`);
+        const res = await fetch(`http://localhost:4000/api/chapters/display-chapter?story_id=${chapter.storyId}&chapter_number=${chapter.chapterNumber}`);
 
         const result = await res.json();
-
-        console.log("Chapter Data:", result);
 
         if (result.success) {
             setDraftContent(result.data.content || "");
             setFinalContent(result.data.displayContent || "");
-        } else {
-            setDraftContent("");
-            setFinalContent("");
         }
     };
     // =========================================================================
@@ -128,8 +122,8 @@ export default function StoryEditorPage() {
         }
 
         const chapterSnapshot = { ...selectedChapter };
-        const currentStoryId = chapterSnapshot.story_id;
-        const currentChapterNumber = chapterSnapshot.chapter_number;
+        const currentStoryId = chapterSnapshot.storyId;
+        const currentChapterNumber = chapterSnapshot.chapterNumber;
         const chapterId = chapterSnapshot.id;
 
         setIsDraftEditing(true);
@@ -212,11 +206,19 @@ export default function StoryEditorPage() {
                     <LeftSidebar storyId={storyId} setActiveTab={setActiveTab} setSelectedChapter={setSelectedChapter} />
                 </div>
 
-                {/* CENTER - Middle */}
-                <section className="h-full border-l border-white/5 relative overflow-hidden">
-                    <Outlet />
-
-                    <RightSidebar isOpen={isRightOpen} setIsOpen={setIsRightOpen} />
+                <section
+                    className="
+        relative
+        flex
+        h-full
+        overflow-hidden
+        border-l
+        border-white/5
+    "
+                >
+                    <div className="flex-1 min-h-0 overflow-hidden">
+                        <Outlet />
+                    </div>
                 </section>
             </div>
         </div>
