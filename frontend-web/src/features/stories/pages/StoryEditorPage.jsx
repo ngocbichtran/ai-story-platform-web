@@ -1,6 +1,5 @@
 import LeftSidebar from "../components/LeftSidebar";
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, PanelRight } from "lucide-react";
 import { Outlet, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 

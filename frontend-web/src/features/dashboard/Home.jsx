@@ -1,46 +1,77 @@
 import React, { useState, useEffect } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { Plus, BookOpen, Loader2 } from "lucide-react";
+import { Plus, BookOpen, Loader2, Trash2 } from "lucide-react";
 import banner from "../../assets/images/banner.png";
+import toast from "react-hot-toast";
+import axios from "axios";
 
 export default function Home() {
-    // Nhận search và currentUser từ MainLayouts qua Outlet context
     const { search } = useOutletContext();
-
     const [stories, setStories] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchStoriesData = async () => {
+    // State quản lý xóa truyện
+    const [deletingId, setDeletingId] = useState(null);
+
+    // Lấy danh sách truyện của riêng tác giả
+    const fetchStoriesData = async () => {
+        try {
             setIsLoading(true);
-            try {
-                const response = await fetch("https://api.baostory.fun/api/chapters/stories", {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    },
-                });
+            const token = localStorage.getItem("token");
 
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        setStories(result.data);
-                    }
-                } else {
-                    console.error("Lỗi phản hồi hệ thống khi lấy danh sách truyện.");
-                }
-            } catch (error) {
-                console.error("Lỗi kết nối API /api/chapters/stories:", error);
-            } finally {
-                setIsLoading(false);
+            // 🔥 ĐỒNG BỘ: Gọi đúng endpoint lấy danh sách truyện /api/stories/list của tác giả
+            const response = await axios.get("http://localhost:4000/api/stories/list", {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (response.data.success) {
+                setStories(response.data.data || []);
             }
-        };
+        } catch (error) {
+            console.error("Lỗi kết nối API lấy danh sách truyện:", error);
+            toast.error("Không thể tải danh sách tác phẩm từ thư viện.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
+    useEffect(() => {
         fetchStoriesData();
     }, []);
 
-    // 🔥 ĐỒNG BỘ: Đổi story.summary thành story.description theo chuẩn MySQL
+    // =========================================================================
+    // XỬ LÝ XÓA TÁC PHẨM THỰC TẾ
+    // =========================================================================
+    const handleDeleteStory = async (storyId, storyTitle) => {
+        // Hộp thoại xác nhận native nhanh để bảo vệ tác giả
+        const confirmDelete = window.confirm(`Bạn có chắc chắn muốn xóa tác phẩm "${storyTitle}" không? Hành động này không thể hoàn tác.`);
+        if (!confirmDelete) return;
+
+        try {
+            setDeletingId(storyId);
+            const token = localStorage.getItem("token");
+
+            const response = await axios.delete(`http://localhost:4000/api/stories/${storyId}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (response.data.success) {
+                toast.success("Xóa tác phẩm thành công!");
+                // Cập nhật lại UI lập tức mà không cần reload trang
+                setStories((prev) => prev.filter((story) => story.id !== storyId));
+            }
+        } catch (error) {
+            console.error("Lỗi khi xóa tác phẩm:", error);
+            toast.error(error.response?.data?.message || "Xóa tác phẩm thất bại.");
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
     const filteredStories = stories.filter((story) => {
         return story.title?.toLowerCase().includes(search.toLowerCase()) || story.description?.toLowerCase().includes(search.toLowerCase());
     });
@@ -63,19 +94,6 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* AUTHORS TEAM */}
-            {/* <div className="relative flex items-center justify-center py-2">
-                <div className="absolute w-full h-[1px] bg-white/10" />
-                <div className="relative z-10 px-5 py-1 bg-[#090d1a] border border-white/5 rounded-full text-center">
-                    <p className="text-slate-500 text-[8px] tracking-[0.25em] uppercase mb-[2px]">Created By</p>
-                    <h3 className="text-white text-sm font-medium tracking-wide">
-                        Trần Ngọc Bích
-                        <span className="mx-2 text-violet-400 text-[10px]">✦</span>
-                        Nguyễn Trí Hào
-                    </h3>
-                </div>
-            </div> */}
-
             {/* SECTION TITLE & COUNTER */}
             <div className="flex items-end justify-between border-b border-white/5 pb-2">
                 <h2 className="text-2xl md:text-3xl font-black text-white">Đang sáng tác</h2>
@@ -93,7 +111,7 @@ export default function Home() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
                     {filteredStories.map((story) => (
                         <div key={story.id} className="group flex items-start gap-4 p-4 bg-slate-950/40 backdrop-blur-md border border-white/10 rounded-2xl hover:border-violet-500/50 hover:bg-slate-950/60 hover:-translate-y-0.5 hover:shadow-[0_0_20px_rgba(139,92,246,0.15)] transition-all duration-300">
-                            {/* 1. KHU VỰC ẢNH BÌA DỌC (ĐỒNG BỘ: cover_image) */}
+                            {/* 1. KHU VỰC ẢNH BÌA */}
                             <div className="w-24 h-32 rounded-xl overflow-hidden bg-slate-900 shrink-0 flex items-center justify-center relative border border-white/10 shadow-lg">
                                 {story.cover_image ? (
                                     <img src={story.cover_image} alt={story.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
@@ -104,7 +122,6 @@ export default function Home() {
                                     </div>
                                 )}
 
-                                {/* BADGE TRẠNG THÁI (ĐỒNG BỘ: PUBLISHED) */}
                                 {story.status === "PUBLISHED" && <div className="absolute top-0 left-0 bg-emerald-500 text-slate-950 font-black text-[9px] tracking-widest px-2 py-0.5 rounded-br-lg uppercase shadow-md z-10 select-none">Full</div>}
                             </div>
 
@@ -114,19 +131,19 @@ export default function Home() {
                                     <h3 className="text-sm md:text-base font-extrabold text-white group-hover:text-violet-400 transition-colors line-clamp-2 leading-snug tracking-wide cursor-pointer" title={story.title}>
                                         {story.title}
                                     </h3>
-                                    {/* 🔥 ĐỒNG BỘ: Đổi story.summary thành story.description */}
                                     <p className="text-xs md:text-sm text-slate-300/90 line-clamp-2 md:line-clamp-3 leading-relaxed font-normal">{story.description || "Chưa có mô tả tóm tắt cho bộ truyện này."}</p>
                                 </div>
 
                                 {/* HÀNG THÔNG TIN DƯỚI ĐÁY VÀ NÚT BẤM CHUYỂN HƯỚNG */}
-                                <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-white/5">
-                                    <span className="text-[11px] text-slate-400 font-medium truncate max-w-[150px]">
-                                        Mã tác giả: <span className="text-slate-300 font-semibold">#{story.user_id}</span>
-                                    </span>
+                                <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/5">
+                                    {/* NÚT XÓA (DESIGN MỚI: SANG TRỌNG & TINH TẾ) */}
+                                    <button onClick={() => handleDeleteStory(story.id, story.title)} disabled={deletingId === story.id} className="group/btn-delete h-9 px-4 rounded-xl border border-white/5 bg-white/5 text-slate-400 text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 hover:shadow-[0_0_15px_rgba(239,68,68,0.1)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95">
+                                        <span>{deletingId === story.id ? "Đang xóa..." : "Xóa"}</span>
+                                    </button>
 
-                                    {/* Đường dẫn nhảy sang Workspace xử lý theo ID truyện thật */}
-                                    <Link to={`/stories/${story.id}/editor`} className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-300 ${story.status === "PUBLISHED" ? "bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10" : "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/10 hover:scale-105 active:scale-95"}`}>
-                                        {story.status === "PUBLISHED" ? "Sửa tác phẩm" : "Viết tiếp →"}
+                                    {/* NÚT ĐIỀU HƯỚNG WORKSPACE (DESIGN MỚI: NỔI BẬT & ĐỔ BÓNG NỀN TỐI) */}
+                                    <Link to={`/stories/${story.id}/editor`} className={`h-9 px-4 rounded-xl text-xs font-bold flex items-center justify-center transition-all duration-300 active:scale-95 ${story.status === "PUBLISHED" ? "border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white" : "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/10 hover:scale-[1.03] hover:shadow-xl hover:shadow-blue-500/20"}`}>
+                                        {story.status === "PUBLISHED" ? "Sửa tác phẩm" : "Viết tiếp"}
                                     </Link>
                                 </div>
                             </div>
@@ -134,7 +151,6 @@ export default function Home() {
                     ))}
                 </div>
             ) : (
-                /* THÔNG BÁO KHI TRỐNG TRUYỆN */
                 <div className="text-center py-20 bg-slate-950/40 backdrop-blur-md rounded-2xl border border-white/10">
                     <p className="text-slate-400 text-sm italic">Không có tác phẩm nào trong thư viện của bạn.</p>
                 </div>

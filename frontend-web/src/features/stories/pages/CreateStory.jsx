@@ -1,70 +1,167 @@
-import { useState } from "react";
-import { BookOpen, ArrowLeft, Loader2, Forward, Lightbulb } from "lucide-react";
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { BookOpen, ArrowLeft, Loader2, Forward, Lightbulb, Copy, Check, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Copy, Check } from "lucide-react";
+import CustomSelect from "../../../features/styles/CustomSelect";
+
 export default function CreateStory() {
     const [title, setTitle] = useState("");
     const [summary, setSummary] = useState("");
-    const [storyPlanning, setStoryPlanning] = useState(""); // Giữ nguyên để mai mốt hiển thị kịch bản AI
+    const [storyPlanning, setStoryPlanning] = useState("");
     const [isCreating, setIsCreating] = useState(false);
     const [showGenreModal, setShowGenreModal] = useState(false);
-    const [genres, setGenres] = useState(["Fantasy", "Adventure", "Romance", "Action", "Horror", "Mystery"]);
-    const [selectedGenres, setSelectedGenres] = useState([]);
-    const [showCreateGenre, setShowCreateGenre] = useState(false);
     const [newGenre, setNewGenre] = useState("");
     const navigate = useNavigate();
-    const [ideaMode, setIdeaMode] = useState("new");
     const [selectedStory, setSelectedStory] = useState("");
     const [reverseIdea, setReverseIdea] = useState("");
-    const [copied, setCopied] = useState(false);
-    const stories = [
-        { id: 1, title: "Sherlock Holmes" },
-        { id: 2, title: "Chuyển sinh làm kiếm" },
-        { id: 3, title: "Ma Đạo" },
-    ];
-    //test
+    const [copied, setCopied] = useState("");
+    const [stories, setStories] = useState([]);
+    const [loadingStories, setLoadingStories] = useState(false);
+    const [genres, setGenres] = useState([]);
+    const [selectedGenres, setSelectedGenres] = useState([]);
     const [coverPreview, setCoverPreview] = useState(null);
     const [coverFile, setCoverFile] = useState(null);
-    const toggleGenre = (genre) => {
-        if (selectedGenres.includes(genre)) {
-            setSelectedGenres(selectedGenres.filter((g) => g !== genre));
-        } else {
-            setSelectedGenres([...selectedGenres, genre]);
+
+    // Lấy danh sách thể loại
+    const fetchGenres = async () => {
+        try {
+            const res = await axios.get("http://localhost:4000/api/genres");
+            if (res.data.success) {
+                setGenres(res.data.data);
+            }
+        } catch (err) {
+            console.error("Lỗi lấy thể loại:", err);
         }
     };
-    //test
+
+    // Tạo thể loại mới
+    const handleCreateGenre = async () => {
+        if (!newGenre.trim()) {
+            toast.error("Vui lòng nhập tên thể loại.");
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                toast.error("Không tìm thấy phiên đăng nhập. Vui lòng đăng nhập lại!");
+                return;
+            }
+
+            const res = await axios.post(
+                "http://localhost:4000/api/genres",
+                {
+                    name: newGenre.trim(),
+                    description: "",
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            if (res.data.success) {
+                await fetchGenres();
+                setNewGenre("");
+                toast.success("Tạo thể loại thành công!");
+            }
+        } catch (err) {
+            console.error("Lỗi tạo thể loại từ Client:", err);
+            toast.error(err.response?.data?.message || "Không thể tạo thể loại.");
+        }
+    };
+
+    // XÓA MỀM THỂ LOẠI (Frontend - CreateStory.jsx)
+    const handleDeleteGenre = async (e, genre) => {
+        e.stopPropagation();
+
+        const confirmDelete = window.confirm(`Bạn có chắc chắn muốn đưa thể loại "${genre.name}" vào thùng rác không?`);
+        if (!confirmDelete) return;
+
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                toast.error("Bạn cần đăng nhập để thực hiện chức năng này.");
+                return;
+            }
+
+            const res = await axios.delete(`http://localhost:4000/api/genres/${genre.id}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (res.data.success) {
+                // Gỡ bỏ khỏi danh sách đang chọn ở giao diện nếu lỡ chọn trúng cái vừa xóa
+                setSelectedGenres((prev) => prev.filter((g) => g.id !== genre.id));
+
+                // Tải lại danh sách (Chỉ còn các thể loại chưa bị xóa mềm)
+                await fetchGenres();
+                toast.success("Đã chuyển thể loại vào thùng rác!");
+            }
+        } catch (err) {
+            console.error("Lỗi khi xóa thể loại:", err);
+            toast.error(err.response?.data?.message || "Không thể thực hiện hành động này.");
+        }
+    };
+
+    // Chọn / Bỏ chọn thể loại
+    const toggleGenre = (genre) => {
+        setSelectedGenres((prev) => {
+            if (prev.some((g) => g.id === genre.id)) {
+                return prev.filter((g) => g.id !== genre.id);
+            }
+            return [...prev, genre];
+        });
+    };
+
     const handleCoverChange = (e) => {
         const file = e.target.files[0];
-
         if (!file) return;
 
         setCoverFile(file);
         setCoverPreview(URL.createObjectURL(file));
     };
-    const handleCreateGenre = () => {
-        if (!newGenre.trim()) return;
 
-        if (!genres.includes(newGenre.trim())) {
-            setGenres([...genres, newGenre.trim()]);
-        }
-
-        setSelectedGenres([...selectedGenres, newGenre.trim()]);
-        setNewGenre("");
-        setShowCreateGenre(false);
-    };
-
-    const handleCopy = async (text) => {
+    const handleCopy = async (id, text) => {
         if (!text.trim()) return;
-
         await navigator.clipboard.writeText(text);
-
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        setCopied(id);
+        setTimeout(() => setCopied(""), 2000);
     };
-    // Helper: Gom dữ liệu thô gửi lên API
+
+    const fetchStories = async () => {
+        try {
+            setLoadingStories(true);
+            const response = await fetch("https://api.baostory.fun/api/chapters/stories", {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+            });
+
+            const result = await response.json();
+            if (response.ok && result.success) {
+                setStories(result.data);
+            } else {
+                toast.error(result.message || "Không lấy được danh sách truyện");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Lỗi kết nối");
+        } finally {
+            setLoadingStories(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchStories();
+        fetchGenres();
+    }, []);
+
     const preparePayload = () => {
-        const genreIds = selectedGenres.map((g) => genres.indexOf(g) + 1);
+        const genreIds = selectedGenres.map((g) => g.id);
         const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
         const localPath = `/baostory/workspace/stories/${slug}`;
         return {
@@ -75,9 +172,6 @@ export default function CreateStory() {
         };
     };
 
-    // =========================================================================
-    // LUỒNG TẠO TRUYỆN THUẦN - ĐÃ THIẾT KẾ SẴN LUỒNG 2 BƯỚC (CHẠY NGẦM)
-    // =========================================================================
     const handleCreate = async () => {
         if (!title.trim()) return toast.error("Vui lòng nhập tên truyện!");
         if (!summary.trim()) return toast.error("Vui lòng nhập mô tả cốt truyện!");
@@ -85,8 +179,8 @@ export default function CreateStory() {
 
         setIsCreating(true);
         try {
-            // Bước 1: Khởi tạo thông tin cơ bản bộ truyện (vào bảng stories và story_genres)
-            const initResponse = await fetch("https://api.baostory.fun/api/stories/init", {
+            // Gọi API gộp duy nhất lên Backend
+            const initResponse = await fetch("http://localhost:4000/api/stories/create", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -95,43 +189,18 @@ export default function CreateStory() {
                 body: JSON.stringify(preparePayload()),
             });
 
-            const initResult = await initResponse.json();
-            if (!initResponse.ok || !initResult.success) {
-                throw new Error(initResult.message || "Khởi tạo tác phẩm thất bại.");
+            if (!initResponse.ok) {
+                throw new Error(`Yêu cầu thất bại với mã lỗi ${initResponse.status}. Vui lòng kiểm tra lại cấu hình Route Backend!`);
             }
 
-            const finalStoryId = initResult.data.story_id;
+            const initResult = await initResponse.json();
 
-            // Bước 2: Chuẩn bị cấu trúc hồi trống (Hiện tại lưu thô, mai mốt thay thế bằng data của n8n)
-            // Cấu trúc Object này được thiết kế khớp 100% với cấu trúc bảng 'story_planning'
-            const defaultArcs = [
-                {
-                    part_number: 1,
-                    title: "Hồi 1: Khởi đầu mới",
-                    plot_summary: summary, // Lấy luôn mô tả của user làm nội dung hồi 1
-                    climax: "Chưa thiết lập cao trào.",
-                },
-            ];
-
-            // Gọi API phê duyệt/lưu cấu trúc phân hồi xuống MySQL
-            const approveResponse = await fetch("https://api.baostory.fun/api/stories/approve-planning", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-                body: JSON.stringify({
-                    story_id: finalStoryId,
-                    arcs: defaultArcs,
-                }),
-            });
-
-            const approveResult = await approveResponse.json();
-            if (approveResponse.ok && approveResult.success) {
+            // Nếu Backend xử lý chuỗi MySQL + MongoDB thành công
+            if (initResult.success) {
                 toast.success("Chúc mừng! Tác phẩm mới đã được khởi tạo thành công trên BaoStory.");
-                navigate("/stories");
+                navigate("/stories"); // Chuyển hướng về trang danh sách truyện
             } else {
-                toast.error(approveResult.message || "Không thể khởi tạo cấu trúc phân hồi.");
+                toast.error(initResult.message || "Khởi tạo tác phẩm thất bại.");
             }
         } catch (error) {
             console.error("Lỗi tạo truyện:", error);
@@ -150,7 +219,7 @@ export default function CreateStory() {
             <section className="relative z-10 flex-1 flex items-center w-full max-w-7xl mx-auto px-6 py-4">
                 <div className="grid lg:grid-cols-2 gap-8 w-full items-stretch">
                     {/* LEFT CARD */}
-                    <div className=" flex-col justify-between max-h-[600px] rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-6">
+                    <div className="flex flex-col justify-between max-h-[600px] rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-6">
                         {/* Header */}
                         <div className="flex items-center justify-between border-b border-white/5 pb-4">
                             <div className="flex items-center gap-3">
@@ -165,32 +234,28 @@ export default function CreateStory() {
                         </div>
 
                         {/* Content */}
-                        <div className="mt-6 space-y-8">
+                        <div className="mt-6 space-y-8 overflow-y-auto pr-1">
                             {/* FORM */}
                             <div className="space-y-6">
                                 {/* Tên truyện */}
                                 <div className="flex items-center gap-4">
                                     <label className="w-24 shrink-0 text-sm font-medium text-slate-300">Tên truyện</label>
-
                                     <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nhập tên truyện" className="flex-1 h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-slate-500 outline-none focus:border-violet-500" />
                                 </div>
 
                                 {/* Thể loại */}
                                 <div className="flex items-center gap-4">
                                     <label className="w-24 shrink-0 text-sm font-medium text-slate-300">Thể loại</label>
-
                                     <button type="button" onClick={() => setShowGenreModal(true)} className="flex-1 min-h-12 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-slate-300 transition hover:bg-white/10">
-                                        {selectedGenres.length ? selectedGenres.join(", ") : "Chọn thể loại"}
+                                        {selectedGenres.length ? selectedGenres.map((g) => g.name).join(", ") : "Chọn thể loại"}
                                     </button>
                                 </div>
 
                                 {/* Ảnh bìa */}
                                 <div className="flex items-center gap-4">
                                     <label className="w-24 shrink-0 text-sm font-medium text-slate-300">Ảnh bìa</label>
-
                                     <div className="flex flex-1 items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
                                         <span className="truncate text-sm text-slate-400">{coverFile ? coverFile.name : "Chưa chọn tệp"}</span>
-
                                         <label className="cursor-pointer rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-500">
                                             Chọn ảnh
                                             <input type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
@@ -202,111 +267,59 @@ export default function CreateStory() {
                             {/* AI REVERSE */}
                             <div className="space-y-4">
                                 <div className="flex gap-3">
-                                    <select value={selectedStory} onChange={(e) => setSelectedStory(e.target.value)} className="flex-1 h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white outline-none focus:border-violet-500">
-                                        <option value="">Chọn tác phẩm...</option>
-
-                                        {stories.map((story) => (
-                                            <option key={story.id} value={story.id} className="bg-slate-900">
-                                                {story.title}
-                                            </option>
-                                        ))}
-                                    </select>
-
+                                    <CustomSelect
+                                        className="flex-1"
+                                        value={selectedStory}
+                                        loading={loadingStories}
+                                        placeholder="Chọn tác phẩm..."
+                                        onChange={setSelectedStory}
+                                        options={stories.map((story) => ({
+                                            value: story.id,
+                                            label: story.title,
+                                        }))}
+                                    />
                                     <button type="button" className="h-12 whitespace-nowrap rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 font-semibold transition hover:scale-[1.02] active:scale-95">
                                         Đảo ngược
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="relative">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleCopy("original", reverseIdea)}
-                                            className="
-        absolute
-        top-3
-        right-3
-        z-10
-        flex
-        items-center
-        justify-center
-        w-9
-        h-9
-        rounded-lg
-        border
-        border-white/10
-        bg-black/40
-        text-slate-400
-        hover:bg-violet-600
-        hover:text-white
-        transition-all
-    "
-                                        >
-                                            {copied === "original" ? <CopyCheck size={18} /> : <Copy size={18} />}
+                                        <button type="button" onClick={() => handleCopy("original", reverseIdea)} className="absolute top-3 right-3 z-10 flex items-center justify-center w-9 h-9 rounded-lg border border-white/10 bg-black/40 text-slate-400 hover:bg-violet-600 hover:text-white transition-all">
+                                            {copied === "original" ? <Check size={18} /> : <Copy size={18} />}
                                         </button>
-
-                                        <textarea readOnly value={reverseIdea} placeholder="Ý tưởng gốc..." className="h-40 w-full pr-24 custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4" />
+                                        <textarea readOnly value={reverseIdea} placeholder="Ý tưởng gốc..." className="h-40 w-full pr-12 custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm" />
                                     </div>
 
                                     <div className="relative">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleCopy("reverse", storyPlanning)}
-                                            className="
-        absolute
-        top-3
-        right-3
-        z-10
-        flex
-        items-center
-        justify-center
-        w-9
-        h-9
-        rounded-lg
-        border
-        border-white/10
-        bg-black/40
-        text-slate-400
-        hover:bg-violet-600
-        hover:text-white
-        transition-all
-    "
-                                        >
-                                            {copied === "reverse" ? <CopyCheck size={18} /> : <Copy size={18} />}
+                                        <button type="button" onClick={() => handleCopy("reverse", storyPlanning)} className="absolute top-3 right-3 z-10 flex items-center justify-center w-9 h-9 rounded-lg border border-white/10 bg-black/40 text-slate-400 hover:bg-violet-600 hover:text-white transition-all">
+                                            {copied === "reverse" ? <Check size={18} /> : <Copy size={18} />}
                                         </button>
-
-                                        <textarea readOnly value={storyPlanning} placeholder="Ý tưởng đảo ngược..." className="h-40 w-full pr-24 custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4" />
+                                        <textarea readOnly value={storyPlanning} placeholder="Ý tưởng đảo ngược..." className="h-40 w-full pr-12 custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm" />
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    {/* RIGHT CARD */} {/* RIGHT CARD */}
+
+                    {/* RIGHT CARD */}
                     <div className="flex max-h-[600px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl">
-                        {/* Header */}
                         <div className="border-b border-white/10 px-6 py-5">
                             <div className="flex items-center gap-3">
                                 <Lightbulb className="text-yellow-400" size={20} />
-
                                 <h2 className="text-lg font-bold">Xem trước tác phẩm</h2>
                             </div>
                         </div>
 
-                        {/* Content */}
-                        <div className="flex flex-1 flex-col gap-6 p-6">
-                            {/* Cover + Info */}
+                        <div className="flex flex-1 flex-col gap-6 p-6 overflow-y-auto">
                             <div className="flex gap-5">
-                                {/* Cover */}
-                                <div className="flex aspect-[3/4] w-22 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">{coverPreview ? <img src={coverPreview} alt="Cover" className="h-full w-full object-cover" /> : <span className="text-xs text-slate-500">Chưa có ảnh</span>}</div>
-
-                                {/* Info */}
+                                <div className="flex aspect-[3/4] w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">{coverPreview ? <img src={coverPreview} alt="Cover" className="h-full w-full object-cover" /> : <span className="text-xs text-slate-500">Chưa có ảnh</span>}</div>
                                 <div className="flex-1">
-                                    <h2 className="text-2xl font-bold">{title || "Tên truyện"}</h2>
-
+                                    <h2 className="text-2xl font-bold truncate max-w-[280px]">{title || "Tên truyện"}</h2>
                                     <div className="mt-3 flex flex-wrap gap-2">
                                         {selectedGenres.length ? (
                                             selectedGenres.map((genre) => (
-                                                <span key={genre} className="rounded-full bg-violet-500/20 px-3 py-1 text-xs text-violet-300">
-                                                    {genre}
+                                                <span key={genre.id} className="rounded-full bg-violet-500/20 px-3 py-1 text-xs text-violet-300">
+                                                    {genre.name}
                                                 </span>
                                             ))
                                         ) : (
@@ -316,15 +329,12 @@ export default function CreateStory() {
                                 </div>
                             </div>
 
-                            {/* Story Planning */}
                             <div className="flex flex-col">
                                 <h3 className="mb-3 font-semibold">Mô tả ý tưởng bằng 1 câu văn</h3>
-
-                                <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Viết ý tưởng..." className="h-52 w-full custom-scroll resize-none rounded-2xl border border-white/10 bg-black/20 p-4 text-white placeholder:text-slate-500 outline-none focus:border-violet-500" />
+                                <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Viết ý tưởng..." className="h-44 w-full custom-scroll resize-none rounded-2xl border border-white/10 bg-black/20 p-4 text-white placeholder:text-slate-500 outline-none focus:border-violet-500" />
                             </div>
 
-                            {/* Button */}
-                            <button onClick={handleCreate} disabled={isCreating} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 font-semibold transition hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60">
+                            <button onClick={handleCreate} disabled={isCreating} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 font-semibold transition hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 mt-auto">
                                 {isCreating ? (
                                     <>
                                         <Loader2 size={18} className="animate-spin" />
@@ -350,45 +360,35 @@ export default function CreateStory() {
 
                         {/* Tạo thể loại */}
                         <div className="mb-4">
-                            {!showCreateGenre ? (
-                                <button onClick={() => setShowCreateGenre(true)} className="w-full py-2 rounded-xl border border-dashed border-violet-500 text-violet-400 hover:bg-violet-500/10 transition">
-                                    + Tạo thể loại mới
+                            <div className="flex gap-2">
+                                <input type="text" value={newGenre} onChange={(e) => setNewGenre(e.target.value)} placeholder="Nhập tên thể loại..." className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-violet-500 text-white" />
+                                <button onClick={handleCreateGenre} className="px-4 rounded-xl bg-violet-600 hover:bg-violet-700">
+                                    Thêm
                                 </button>
-                            ) : (
-                                <div className="flex gap-2">
-                                    <input type="text" value={newGenre} onChange={(e) => setNewGenre(e.target.value)} placeholder="Nhập tên thể loại..." className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-violet-500" />
-
-                                    <button onClick={handleCreateGenre} className="px-4 rounded-xl bg-violet-600 hover:bg-violet-700">
-                                        Thêm
-                                    </button>
-
-                                    <button
-                                        onClick={() => {
-                                            setShowCreateGenre(false);
-                                            setNewGenre("");
-                                        }}
-                                        className="px-3 rounded-xl bg-white/10 hover:bg-white/20"
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                            )}
+                            </div>
                         </div>
 
                         {/* Danh sách thể loại */}
                         <div className="grid grid-cols-2 gap-2.5 max-h-[280px] overflow-y-auto pr-1">
-                            {genres.map((genre) => (
-                                <button key={genre} onClick={() => toggleGenre(genre)} className={`p-2.5 text-sm rounded-xl border transition-all ${selectedGenres.includes(genre) ? "bg-violet-500/20 border-violet-500 text-violet-300 font-medium" : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10"}`}>
-                                    {genre}
-                                </button>
-                            ))}
+                            {genres.map((genre) => {
+                                const isSelected = selectedGenres.some((g) => g.id === genre.id);
+                                return (
+                                    <div key={genre.id} onClick={() => toggleGenre(genre)} className={`group relative flex items-center justify-between p-2.5 text-sm rounded-xl border cursor-pointer transition-all ${isSelected ? "bg-violet-500/20 border-violet-500 text-violet-300 font-medium" : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10"}`}>
+                                        <span className="truncate pr-5">{genre.name}</span>
+
+                                        {/* NÚT XÓA THỂ LOẠI (CÓ HOVER HIỆN LÊN) */}
+                                        <button type="button" onClick={(e) => handleDeleteGenre(e, genre)} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md bg-red-500/10 hover:bg-red-600 text-slate-400 hover:text-white transition opacity-0 group-hover:opacity-100">
+                                            <X size={12} />
+                                        </button>
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-white/5">
                             <button onClick={() => setShowGenreModal(false)} className="px-4 py-2 text-sm rounded-xl bg-white/5 hover:bg-white/10">
                                 Hủy
                             </button>
-
                             <button onClick={() => setShowGenreModal(false)} className="px-4 py-2 text-sm rounded-xl bg-gradient-to-r from-blue-600 to-violet-600">
                                 Xác nhận
                             </button>

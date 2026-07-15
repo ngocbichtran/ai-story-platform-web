@@ -15,7 +15,6 @@ import OverviewPage from "./features/stories/pages/OverviewPage";
 import StoryList from "./features/stories/pages/StoryList";
 import CreateStory from "./features/stories/pages/CreateStory";
 import EditStory from "./features/stories/pages/EditStory";
-import DetailStory from "./features/stories/pages/StoryDetail";
 
 //chapters
 import ChapterEditorPage from "./features/stories/pages/chapters/ChapterEditorPage";
@@ -71,7 +70,6 @@ function App() {
                 {/* Story */}
                 <Route path="/stories/create" element={<CreateStory />} />
                 <Route path="/stories/:storyId/edit" element={<EditStory />} />
-                <Route path="/stories/detail" element={<DetailStory />} />
 
                 {/* Worlds */}
                 <Route path="/stories/:storyId/worlds/create" element={<CreateWorldPage />} />
