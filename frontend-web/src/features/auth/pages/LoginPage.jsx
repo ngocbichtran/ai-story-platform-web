@@ -41,41 +41,47 @@ const LoginPage = () => {
                     {/* Tag định vị hệ thống */}
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-semibold tracking-wider uppercase">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
-                        Không gian làm việc bảo mật
+                        Hệ thống hỗ trợ sáng tác truyện
                     </div>
 
+                    {/* Giới thiệu */}
                     <div className="space-y-3">
-                        <h2 className="text-3xl sm:text-4xl font-black tracking-wide bg-gradient-to-r from-white via-slate-100 to-purple-200 bg-clip-text text-transparent font-serif drop-shadow-sm">BaoStory Studio</h2>
-                        <p className="text-sm sm:text-base text-purple-200/70 font-light leading-relaxed">Trình soạn thảo chuyên nghiệp tối ưu riêng cho tác giả sáng tác. Nơi ý tưởng của bạn được bảo mật tuyệt đối — chỉ bạn mới có quyền tiếp cận và lật mở tác phẩm của chính mình.</p>
+                        <h2 className="text-3xl sm:text-4xl font-black tracking-wide bg-gradient-to-r from-white via-slate-100 to-purple-200 bg-clip-text text-transparent font-serif drop-shadow-sm">BaoStory</h2>
+
+                        <p className="text-sm sm:text-base text-purple-200/70 font-light leading-relaxed">Không gian sáng tác dành cho tác giả tự do, nơi bạn có thể xây dựng, quản lý và phát triển toàn bộ tác phẩm trong một nền tảng thống nhất.</p>
                     </div>
 
-                    {/* CÁC ĐIỂM ĐẶC TRƯNG PHÙ HỢP VỚI HỆ THỐNG */}
+                    {/* Đặc trưng */}
                     <div className="space-y-4 sm:space-y-5">
-                        {/* Đặc quyền 1: Private Workspace (FR02, FR07) */}
+                        {/* Quản lý tác phẩm */}
                         <div className="flex gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 backdrop-blur-sm transition-all duration-300 hover:bg-purple-500/[0.03] hover:border-purple-500/20 group/item">
-                            <div className="w-10 h-10 shrink-0 rounded-xl bg-purple-950/50 border border-purple-500/30 flex items-center justify-center text-purple-300 font-bold group-hover/item:bg-purple-500 group-hover/item:text-white transition-colors">
+                            <div className="w-10 h-10 shrink-0 rounded-xl bg-purple-950/50 border border-purple-500/30 flex items-center justify-center text-purple-300 group-hover/item:bg-purple-500 group-hover/item:text-white transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             </div>
+
                             <div>
-                                <h4 className="text-sm sm:text-base font-bold text-purple-100">Biên soạn chuyên sâu & Độc quyền</h4>
-                                <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">Quản lý trọn gói từ Cốt truyện, Nhân vật, Phân cảnh cho đến Thế giới truyện. Cơ chế tự động lưu (Auto-save) và quản lý lịch sử phiên bản giúp bạn không bao giờ mất bản thảo.</p>
+                                <h4 className="text-sm sm:text-base font-bold text-purple-100">Quản lý tác phẩm toàn diện</h4>
+
+                                <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">Theo dõi cốt truyện, nhân vật, thế giới truyện, chương truyện và lịch sử chỉnh sửa trong một hệ thống thống nhất, hỗ trợ phát triển cả tác phẩm gốc, ngoại truyện và tác phẩm phái sinh.</p>
                             </div>
                         </div>
 
-                        {/* Đặc quyền 2: AI Assistant (FR02.7, FR06.5, FR07.6, FR07.7) */}
+                        {/* AI */}
                         <div className="flex gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 backdrop-blur-sm transition-all duration-300 hover:bg-purple-500/[0.03] hover:border-purple-500/20 group/item">
-                            <div className="w-10 h-10 shrink-0 rounded-xl bg-purple-950/50 border border-purple-500/30 flex items-center justify-center text-purple-300 font-bold group-hover/item:bg-purple-500 group-hover/item:text-white transition-colors">
+                            <div className="w-10 h-10 shrink-0 rounded-xl bg-purple-950/50 border border-purple-500/30 flex items-center justify-center text-purple-300 group-hover/item:bg-purple-500 group-hover/item:text-white transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                                 </svg>
                             </div>
+
                             <div>
-                                <h4 className="text-sm sm:text-base font-bold text-purple-100">Trợ lý AI</h4>
-                                <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">Bứt phá tư duy với AI hỗ trợ kiểm tra chính tả, đảo ngược các ý tưởng có sẵn một cách độc đáo.</p>
+                                <h4 className="text-sm sm:text-base font-bold text-purple-100">AI hỗ trợ sáng tác</h4>
+
+                                <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">AI hỗ trợ phát triển ý tưởng, kiểm tra chính tả và gợi ý nội dung nhằm nâng cao năng suất sáng tác.</p>
                             </div>
                         </div>
                     </div>
@@ -108,7 +114,7 @@ const LoginPage = () => {
                             <h1 className="text-3xl font-extrabold tracking-[4px] uppercase bg-gradient-to-b from-white via-slate-100 to-purple-200 bg-clip-text text-transparent drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)] font-serif">Đăng nhập</h1>
 
                             {/* Slogan định hướng hệ thống cá nhân */}
-                            <p className="text-xs sm:text-sm text-purple-200/60 mt-3 mb-10 tracking-wide">Tiếp tục hành trình xây dựng thế giới truyện của riêng bạn.</p>
+                            <p className="text-xs sm:text-sm text-purple-200/60 mt-3 mb-10 tracking-wide">Chào mừng bạn đến với BaoStory!</p>
                         </div>
 
                         {/* GOOGLE LOGIN HIDDEN - HOÀN TOÀN GIỮ NGUYÊN LOGIC CỦA BẠN */}

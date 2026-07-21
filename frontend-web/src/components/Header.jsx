@@ -97,18 +97,6 @@ export default function Header({ currentUser, search, setSearch, handleLogout })
                                     <p className="text-xs text-slate-400 truncate mt-0.5">{currentUser?.email}</p>
                                 </div>
 
-                                {/* Menu chức năng: Đổi mật khẩu */}
-                                <button
-                                    onClick={() => {
-                                        setShowDropdown(false);
-                                        navigate("/changePassword");
-                                    }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-all text-left"
-                                >
-                                    <LockKeyhole className="w-4 h-4 text-slate-400" />
-                                    Đổi mật khẩu
-                                </button>
-
                                 {/* Menu chức năng: Đăng xuất */}
                                 <button
                                     onClick={() => {
