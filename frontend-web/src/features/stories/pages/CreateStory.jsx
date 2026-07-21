@@ -26,7 +26,7 @@ export default function CreateStory() {
     // Lấy danh sách thể loại
     const fetchGenres = async () => {
         try {
-            const res = await axios.get("http://localhost:4000/api/genres");
+            const res = await axios.get("https://api.baostory.fun/api/genres");
             if (res.data.success) {
                 setGenres(res.data.data);
             }
@@ -50,7 +50,7 @@ export default function CreateStory() {
             }
 
             const res = await axios.post(
-                "http://localhost:4000/api/genres",
+                "https://api.baostory.fun/api/genres",
                 {
                     name: newGenre.trim(),
                     description: "",
@@ -87,7 +87,7 @@ export default function CreateStory() {
                 return;
             }
 
-            const res = await axios.delete(`http://localhost:4000/api/genres/${genre.id}`, {
+            const res = await axios.delete(`https://api.baostory.fun/api/genres/${genre.id}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -131,11 +131,11 @@ export default function CreateStory() {
         setCopied(id);
         setTimeout(() => setCopied(""), 2000);
     };
-
+    // Danh sách truyện của user
     const fetchStories = async () => {
         try {
             setLoadingStories(true);
-            const response = await fetch("https://api.baostory.fun/api/chapters/stories", {
+            const response = await fetch("https://api.baostory.fun/api/stories/list", {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
@@ -171,7 +171,7 @@ export default function CreateStory() {
             genre_ids: genreIds,
         };
     };
-
+    // Tạo truyện mới
     const handleCreate = async () => {
         if (!title.trim()) return toast.error("Vui lòng nhập tên truyện!");
         if (!summary.trim()) return toast.error("Vui lòng nhập mô tả cốt truyện!");
@@ -180,7 +180,7 @@ export default function CreateStory() {
         setIsCreating(true);
         try {
             // Gọi API gộp duy nhất lên Backend
-            const initResponse = await fetch("http://localhost:4000/api/stories/create", {
+            const initResponse = await fetch("https://api.baostory.fun/api/stories/create", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -369,16 +369,17 @@ export default function CreateStory() {
                         </div>
 
                         {/* Danh sách thể loại */}
-                        <div className="grid grid-cols-2 gap-2.5 max-h-[280px] overflow-y-auto pr-1">
+                        <div className="grid grid-cols-2 gap-2.5 max-h-[280px] overflow-y-auto pr-1 custom-scroll">
                             {genres.map((genre) => {
                                 const isSelected = selectedGenres.some((g) => g.id === genre.id);
                                 return (
                                     <div key={genre.id} onClick={() => toggleGenre(genre)} className={`group relative flex items-center justify-between p-2.5 text-sm rounded-xl border cursor-pointer transition-all ${isSelected ? "bg-violet-500/20 border-violet-500 text-violet-300 font-medium" : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10"}`}>
-                                        <span className="truncate pr-5">{genre.name}</span>
+                                        {/* 1. Đăng ký pr-8 để chữ không bao giờ đè lên nút xóa */}
+                                        <span className="truncate pr-8 select-none">{genre.name}</span>
 
-                                        {/* NÚT XÓA THỂ LOẠI (CÓ HOVER HIỆN LÊN) */}
-                                        <button type="button" onClick={(e) => handleDeleteGenre(e, genre)} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md bg-red-500/10 hover:bg-red-600 text-slate-400 hover:text-white transition opacity-0 group-hover:opacity-100">
-                                            <X size={12} />
+                                        {/* 2. Bổ sung z-10 và pointer-events-auto để chắc chắn nút nhận diện hover/click */}
+                                        <button type="button" onClick={(e) => handleDeleteGenre(e, genre)} className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-lg bg-red-500/20 hover:bg-red-600 text-red-300 hover:text-white transition-all opacity-0 group-hover:opacity-100 pointer-events-auto" title={`Xóa thể loại ${genre.name}`}>
+                                            <X size={13} />
                                         </button>
                                     </div>
                                 );

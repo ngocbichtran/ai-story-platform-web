@@ -19,8 +19,8 @@ export default function Home() {
             setIsLoading(true);
             const token = localStorage.getItem("token");
 
-            // 🔥 ĐỒNG BỘ: Gọi đúng endpoint lấy danh sách truyện /api/stories/list của tác giả
-            const response = await axios.get("http://localhost:4000/api/stories/list", {
+            // Gọi đúng endpoint lấy danh sách truyện /api/stories/list của tác giả
+            const response = await axios.get("https://api.baostory.fun/api/stories/list", {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -53,7 +53,7 @@ export default function Home() {
             setDeletingId(storyId);
             const token = localStorage.getItem("token");
 
-            const response = await axios.delete(`http://localhost:4000/api/stories/${storyId}`, {
+            const response = await axios.delete(`https://api.baostory.fun/api/stories/${storyId}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },

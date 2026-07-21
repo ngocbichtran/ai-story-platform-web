@@ -40,7 +40,7 @@ export default function PlotList() {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const res = await axios.get(`http://localhost:4000/api/stories/${storyId}/outline`, config);
+            const res = await axios.get(`https://api.baostory.fun/api/storyOutline/${storyId}/outline`, config);
 
             if (res.data.success && res.data.data) {
                 const data = res.data.data;
@@ -71,7 +71,7 @@ export default function PlotList() {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const res = await axios.put(`http://localhost:4000/api/stories/${storyId}/outline`, form, config);
+            const res = await axios.put(`https://api.baostory.fun/api/storyOutline/${storyId}/outline`, form, config);
 
             if (res.data.success) {
                 toast.success("Lưu đề cương khung sườn thành công!");

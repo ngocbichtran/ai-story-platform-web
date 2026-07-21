@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpen, ArrowLeft, Loader2, Save, Lightbulb, Copy, CopyCheck } from "lucide-react";
+import { BookOpen, ArrowLeft, Loader2, Save, Lightbulb, Copy, CopyCheck, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import axios from "axios";
@@ -32,7 +32,7 @@ export default function EditStory() {
     const [selectedStory, setSelectedStory] = useState("");
     const [reverseIdea, setReverseIdea] = useState("");
 
-    // Danh sách tác phẩm giả lập cho phân hệ AI Reverse giữ nguyên cấu trúc design
+    // Danh sách tác phẩm giả lập cho phân hệ AI Reverse
     const stories = [
         { id: 1, title: "Sherlock Holmes" },
         { id: 2, title: "Chuyển sinh làm kiếm" },
@@ -40,10 +40,24 @@ export default function EditStory() {
     ];
 
     // =========================
+    // API: TẢI DANH SÁCH THỂ LOẠI (DÙNG CHUNG)
+    // =========================
+    const fetchGenres = async () => {
+        try {
+            const res = await axios.get("https://api.baostory.fun/api/genres");
+            if (res.data.success) {
+                setGenres(res.data.data || []);
+                return res.data.data || [];
+            }
+        } catch (err) {
+            console.error("Lỗi lấy danh sách thể loại:", err);
+            toast.error("Không thể tải danh mục thể loại.");
+        }
+        return [];
+    };
+
+    // =========================
     // API: TẢI DỮ LIỆU BAN ĐẦU
-    // =========================
-    // =========================
-    // API: TẢI DỮ LIỆU BAN ĐẦU (ĐÃ SỬA LOGIC MAP THỂ LOẠI CHUẨN)
     // =========================
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -53,13 +67,7 @@ export default function EditStory() {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
 
                 // Gọi đồng thời danh mục thể loại gốc và chi tiết bộ truyện cần sửa
-                const [genresRes, storyRes] = await Promise.all([axios.get("http://localhost:4000/api/genres"), axios.get(`http://localhost:4000/api/stories/${storyId}`, config)]);
-
-                let activeGenres = [];
-                if (genresRes.data.success) {
-                    setGenres(genresRes.data.data || []);
-                    activeGenres = genresRes.data.data || [];
-                }
+                const [activeGenres, storyRes] = await Promise.all([fetchGenres(), axios.get(`http://localhost:4000/api/stories/${storyId}`, config)]);
 
                 if (storyRes.data.success) {
                     const storyData = storyRes.data.data;
@@ -67,16 +75,14 @@ export default function EditStory() {
                     setSummary(storyData.description || "");
                     setCoverPreview(storyData.cover_image || null);
 
-                    // 🌟 SỬA TẠI ĐÂY: Xử lý chuỗi genres hoặc genreIds trả về từ GROUP_CONCAT của MySQL
                     // Trường hợp 1: Nếu backend trả về chuỗi tên thể loại "Mystery, Adventure" qua trường `genres`
                     if (storyData.genres && activeGenres.length > 0) {
                         const storyGenresNames = storyData.genres.split(", ");
                         const mapped = activeGenres.filter((g) => storyGenresNames.includes(g.name));
                         setSelectedGenres(mapped);
                     }
-                    // Trường hợp 2: Phòng hờ nếu bạn đổi SQL trả về chuỗi ID "1,2" qua trường `genreIds`
+                    // Trường hợp 2: Phòng hờ nếu trả về chuỗi ID "1,2" qua trường `genreIds`
                     else if (storyData.genreIds && activeGenres.length > 0) {
-                        // Nếu là chuỗi "1,2" thì biến đổi thành mảng số [1, 2]
                         const idArray = typeof storyData.genreIds === "string" ? storyData.genreIds.split(",").map(Number) : storyData.genreIds;
 
                         if (Array.isArray(idArray)) {
@@ -97,7 +103,7 @@ export default function EditStory() {
         if (storyId) fetchInitialData();
     }, [storyId, navigate]);
 
-    // Copy ClipBoard giữ nguyên
+    // Copy ClipBoard
     const handleCopy = async (type, text) => {
         if (!text) return;
         try {
@@ -116,7 +122,6 @@ export default function EditStory() {
     // XỬ LÝ CHỌN THỂ LOẠI
     // =========================
     const toggleGenre = (genre) => {
-        // genre nhận vào là Object thực tế từ DB: { id: 1, name: "Fantasy" }
         if (selectedGenres.some((g) => g.id === genre.id)) {
             setSelectedGenres(selectedGenres.filter((g) => g.id !== genre.id));
         } else {
@@ -124,17 +129,23 @@ export default function EditStory() {
         }
     };
 
+    // Tạo thể loại mới
     const handleCreateGenre = async () => {
-        if (!newGenre.trim()) return;
+        if (!newGenre.trim()) {
+            toast.error("Vui lòng nhập tên thể loại.");
+            return;
+        }
 
         try {
             const token = localStorage.getItem("token");
-            const res = await axios.post("http://localhost:4000/api/genres", { name: newGenre.trim(), description: "" }, { headers: { Authorization: `Bearer ${token}` } });
+            const res = await axios.post("https://api.baostory.fun/api/genres", { name: newGenre.trim(), description: "" }, { headers: { Authorization: `Bearer ${token}` } });
 
             if (res.data.success) {
-                const createdGenre = res.data.data; // Nhận về Object {id, name}
-                setGenres([...genres, createdGenre]);
-                setSelectedGenres([...selectedGenres, createdGenre]);
+                await fetchGenres();
+                const createdGenre = res.data.data;
+                if (createdGenre) {
+                    setSelectedGenres((prev) => [...prev, createdGenre]);
+                }
                 setNewGenre("");
                 setShowCreateGenre(false);
                 toast.success("Tạo thể loại mới thành công!");
@@ -142,6 +153,42 @@ export default function EditStory() {
         } catch (err) {
             console.error("Lỗi tạo thể loại nhanh:", err);
             toast.error(err.response?.data?.message || "Không thể tạo thể loại.");
+        }
+    };
+
+    // =========================
+    // API: XÓA MỀM THỂ LOẠI
+    // =========================
+    const handleDeleteGenre = async (e, genre) => {
+        e.stopPropagation();
+
+        const confirmDelete = window.confirm(`Bạn có chắc chắn muốn đưa thể loại "${genre.name}" vào thùng rác không?`);
+        if (!confirmDelete) return;
+
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                toast.error("Bạn cần đăng nhập để thực hiện chức năng này.");
+                return;
+            }
+
+            const res = await axios.delete(`https://api.baostory.fun/api/genres/${genre.id}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (res.data.success) {
+                // Gỡ khỏi danh sách đang chọn ở giao diện nếu chọn trúng thể loại vừa xóa
+                setSelectedGenres((prev) => prev.filter((g) => g.id !== genre.id));
+
+                // Tải lại danh sách mới
+                await fetchGenres();
+                toast.success("Đã chuyển thể loại vào thùng rác!");
+            }
+        } catch (err) {
+            console.error("Lỗi khi xóa thể loại:", err);
+            toast.error(err.response?.data?.message || "Không thể thực hiện hành động này.");
         }
     };
 
@@ -170,18 +217,16 @@ export default function EditStory() {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const formatGenreIds = selectedGenres.map((g) => {
-                return g.id ? Number(g.id) : Number(g);
-            });
+            const formatGenreIds = selectedGenres.map((g) => (g.id ? Number(g.id) : Number(g)));
 
             const payload = {
                 title: title.trim(),
                 description: summary.trim(),
-                genreIds: formatGenreIds, // ĐÃ ĐỔI THÀNH MẢNG ID SỐ NGUYÊN KHỚP MYSQL
+                genreIds: formatGenreIds,
                 coverImage: coverPreview,
             };
 
-            const res = await axios.put(`http://localhost:4000/api/stories/${storyId}`, payload, config);
+            const res = await axios.put(`https://api.baostory.fun/api/stories/${storyId}`, payload, config);
 
             if (res.data.success) {
                 toast.success("Cập nhật thông tin truyện thành công!");
@@ -230,12 +275,13 @@ export default function EditStory() {
                         {/* CONTENT */}
                         <div className="mt-6 space-y-8">
                             <div className="space-y-6">
-                                {/* TÊN */}
+                                {/* TÊN TRUYỆN */}
                                 <div className="flex items-center gap-4">
                                     <label className="w-24 shrink-0 text-sm font-medium text-slate-300">Tên truyện</label>
                                     <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nhập tên truyện" className="flex-1 h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-slate-500 outline-none focus:border-violet-500" />
                                 </div>
 
+                                {/* THỂ LOẠI */}
                                 <div className="flex items-center gap-4">
                                     <label className="w-24 shrink-0 text-sm font-medium text-slate-300">Thể loại</label>
                                     <button type="button" onClick={() => setShowGenreModal(true)} className="flex-1 min-h-12 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-slate-300 hover:bg-white/10 transition">
@@ -365,13 +411,18 @@ export default function EditStory() {
                         </div>
 
                         {/* List Selector Box */}
-                        <div className="grid max-h-[280px] grid-cols-2 gap-2.5 overflow-y-auto pr-1">
+                        <div className="grid max-h-[280px] grid-cols-2 gap-2.5 overflow-y-auto pr-1 custom-scroll">
                             {genres.map((genre) => {
                                 const isSelected = selectedGenres.some((g) => g.id === genre.id);
                                 return (
-                                    <button key={genre.id} onClick={() => toggleGenre(genre)} className={`rounded-xl border p-2.5 text-sm transition-all text-left ${isSelected ? "border-violet-500 bg-violet-500/20 font-medium text-violet-300" : "border-white/5 bg-white/5 text-slate-400 hover:bg-white/10"}`}>
-                                        {genre.name}
-                                    </button>
+                                    <div key={genre.id} onClick={() => toggleGenre(genre)} className={`group relative flex items-center justify-between p-2.5 text-sm rounded-xl border cursor-pointer transition-all ${isSelected ? "bg-violet-500/20 border-violet-500 text-violet-300 font-medium" : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10"}`}>
+                                        <span className="truncate pr-8 select-none">{genre.name}</span>
+
+                                        {/* NÚT XÓA THỂ LOẠI (HIỆN KHI HOVER) */}
+                                        <button type="button" onClick={(e) => handleDeleteGenre(e, genre)} className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-lg bg-red-500/20 hover:bg-red-600 text-red-300 hover:text-white transition-all opacity-0 group-hover:opacity-100 pointer-events-auto" title={`Xóa thể loại ${genre.name}`}>
+                                            <X size={13} />
+                                        </button>
+                                    </div>
                                 );
                             })}
                         </div>

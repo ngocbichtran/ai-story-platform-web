@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, BookOpen, Layers, Users, FolderHeart, Plus, ScrollText, Clapperboard, Loader2, Trash2 } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom"; //   Bổ sung useLocation
 import axios from "axios";
 import toast from "react-hot-toast";
 
 export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter }) {
+    const location = useLocation(); // Lấy location hiện tại của trình duyệt
+    const navigate = useNavigate();
+
     const [chaptersList, setChaptersList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [activeChapter, setActiveChapter] = useState(null);
-    const [activeNav, setActiveNav] = useState("overview");
-    const navigate = useNavigate();
+    const [activeNav, setActiveNav] = useState(""); // Khởi tạo rỗng để useEffect tự động sync từ URL
     const [story, setStory] = useState(null);
 
     const navItems = [
@@ -26,6 +28,33 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
     const [chapterNumberInput, setChapterNumberInput] = useState("");
 
     // =========================================================================
+    // 🟢 3. TỰ ĐỘNG ĐỒNG BỘ TAB ACTIVE THEO URL THỰC TẾ
+    // =========================================================================
+    useEffect(() => {
+        const currentPath = location.pathname;
+
+        // Nếu đường dẫn chứa chữ chapter (Ví dụ: /stories/28/editor/chapter/1)
+        if (currentPath.includes("/editor/chapter/")) {
+            const match = currentPath.match(/\/editor\/chapter\/(\d+)/);
+            if (match && match[1]) {
+                setActiveChapter(Number(match[1]));
+            } else {
+                setActiveChapter(null);
+            }
+            setActiveNav(""); // Xóa active của danh mục tổng quan khi đang ở trang chương
+        } else {
+            setActiveChapter(null);
+            // Tìm tab tổng quan khớp với đuôi URL
+            const matchedNav = navItems.find((item) => currentPath.endsWith(item.id));
+            if (matchedNav) {
+                setActiveNav(matchedNav.id);
+            } else if (currentPath.endsWith("/editor") || currentPath.endsWith("/editor/")) {
+                setActiveNav("overview");
+            }
+        }
+    }, [location.pathname, storyId]);
+
+    // =========================================================================
     // API: TẢI DANH SÁCH CHƯƠNG & THÔNG TIN DASHBOARD
     // =========================================================================
     const fetchData = async () => {
@@ -35,13 +64,8 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            // Gọi đồng thời cả 2 API lấy Thông tin Truyện và Danh sách Chương
-            const [storyRes, chaptersRes] = await Promise.all([
-                axios.get(`http://localhost:4000/api/stories/${storyId}`, config), // API lấy thông tin bộ truyện
-                axios.get(`http://localhost:4000/api/chapters/${storyId}/chapters`, config), // API lấy danh sách chương
-            ]);
+            const [storyRes, chaptersRes] = await Promise.all([axios.get(`https://api.baostory.fun/api/stories/${storyId}`, config), axios.get(`https://api.baostory.fun/api/chapters/${storyId}/chapters`, config)]);
 
-            // Cập nhật State khi dữ liệu phản hồi thành công
             if (storyRes.data?.success) {
                 setStory(storyRes.data.data);
             }
@@ -62,7 +86,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
     }, [storyId]);
 
     // =========================================================================
-    // API: TẠO CHƯƠNG MỚI (Đã đổi thành camelCase: chapterNumber)
+    // API: TẠO CHƯƠNG MỚI
     // =========================================================================
     const handleCreateChapter = async () => {
         if (!chapterTitle.trim()) {
@@ -82,11 +106,11 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
             const payload = {
-                chapterNumber: parsedNumber, // Chuẩn hóa camelCase
+                chapterNumber: parsedNumber,
                 title: chapterTitle.trim(),
             };
 
-            const res = await axios.post(`http://localhost:4000/api/chapters/${storyId}/chapters`, payload, config);
+            const res = await axios.post(`https://api.baostory.fun/api/chapters/${storyId}/chapters`, payload, config);
 
             if (res.data.success) {
                 const newChapterObj = res.data.data || {
@@ -102,10 +126,8 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
                 setShowCreateChapterModal(false);
                 toast.success("Tạo chương mới thành công!");
 
-                setActiveNav("");
-                setActiveChapter(parsedNumber);
                 setSelectedChapter(newChapterObj);
-                navigate(`/stories/${storyId}/editor/chapter/${parsedNumber}/edit`);
+                navigate(`/stories/${storyId}/editor/chapter/${parsedNumber}`);
             }
         } catch (error) {
             console.error("Lỗi khởi tạo chương truyện:", error);
@@ -116,7 +138,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
     };
 
     // =========================================================================
-    // API: XÓA CHƯƠNG TRUYỆN MỀM (DỒN SỐ TỰ ĐỘNG)
+    // API: XÓA CHƯƠNG TRUYỆN MỀM
     // =========================================================================
     const handleDeleteChapter = async (e, targetChapterNumber) => {
         e.stopPropagation();
@@ -128,12 +150,11 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const res = await axios.delete(`http://localhost:4000/api/chapters/${storyId}/chapters/${targetChapterNumber}`, config);
+            const res = await axios.delete(`https://api.baostory.fun/api/chapters/${storyId}/chapters/${targetChapterNumber}`, config);
 
             if (res.data.success) {
                 toast.success("Xóa chương thành công!");
                 if (activeChapter === targetChapterNumber) {
-                    setActiveChapter(null);
                     navigate(`/stories/${storyId}/editor/overview`);
                 }
                 fetchData();
@@ -166,15 +187,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             {/* 3. MENU ĐIỀU HƯỚNG TỔNG QUAN */}
             <div className="flex-none rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-1.5 space-y-0.5">
                 {navItems.map((item) => (
-                    <Link
-                        key={item.id}
-                        to={item.path}
-                        onClick={() => {
-                            setActiveChapter(null);
-                            setActiveNav(item.id);
-                        }}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs md:text-sm font-medium transition duration-150 ${activeNav === item.id ? "bg-[#1d2433] text-[#a7c8ff] font-bold border-l-2 border-[#0571d3] pl-2.5 shadow-md shadow-black/20" : "text-[#c1c6d5] hover:bg-[#181d29] hover:text-white"}`}
-                    >
+                    <Link key={item.id} to={item.path} className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs md:text-sm font-medium transition duration-150 ${activeNav === item.id ? "bg-[#1d2433] text-[#a7c8ff] font-bold border-l-2 border-[#0571d3] pl-2.5 shadow-md shadow-black/20" : "text-[#c1c6d5] hover:bg-[#181d29] hover:text-white"}`}>
                         <span className={activeNav === item.id ? "text-[#a7c8ff]" : "text-[#8b919e]"}>{item.icon}</span>
                         <span>{item.label}</span>
                     </Link>
@@ -201,16 +214,14 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
                             .sort((a, b) => Number(a.chapterNumber) - Number(b.chapterNumber))
                             .map((chapter) => {
                                 const displayTitle = chapter.title ? `Chương ${chapter.chapterNumber}: ${chapter.title}` : `Chương ${chapter.chapterNumber}`;
-                                const isCurrentActive = activeChapter === chapter.chapterNumber;
+                                const isCurrentActive = Number(activeChapter) === Number(chapter.chapterNumber);
 
                                 return (
                                     <div key={chapter.id || chapter._id || `ch-${chapter.chapterNumber}`} className="relative group/chapter-row w-full flex items-center">
                                         <button
                                             onClick={() => {
-                                                setActiveNav("");
-                                                setActiveChapter(chapter.chapterNumber);
                                                 setSelectedChapter(chapter);
-                                                navigate(`/stories/${storyId}/editor/chapter/${chapter.chapterNumber}/edit`);
+                                                navigate(`/stories/${storyId}/editor/chapter/${chapter.chapterNumber}`);
                                             }}
                                             className={`w-full text-left px-3 py-2.5 pr-10 rounded-xl text-xs md:text-sm transition-all duration-200 flex items-center gap-2 border ${isCurrentActive ? "bg-[#1d2433] text-[#a7c8ff] font-bold border-blue-500/30 shadow-sm" : "text-[#c1c6d5] border-transparent hover:bg-[#181d29] hover:text-white"}`}
                                         >

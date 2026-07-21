@@ -16,8 +16,10 @@ export default function StoryEditorPage() {
 
         loadChapter(selectedChapter);
     }, [selectedChapter]);
+
+    // Lấy chi tiết nội dung chương
     const loadChapter = async (chapter) => {
-        const res = await fetch(`http://localhost:4000/api/chapters/display-chapter?story_id=${chapter.storyId}&chapter_number=${chapter.chapterNumber}`);
+        const res = await fetch(`https://api.baostory.fun/api/chapters/display-chapter?story_id=${chapter.storyId}&chapter_number=${chapter.chapterNumber}`);
 
         const result = await res.json();
 
