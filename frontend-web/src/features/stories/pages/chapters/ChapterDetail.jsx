@@ -21,7 +21,7 @@ export default function ChapterDetailPage() {
         try {
             setLoading(true);
 
-            const res = await axios.get(`http://localhost:4000/api/chapters/display-chapter/${storyId}/${chapterNumber}`);
+            const res = await axios.get(`https://api.baostory.fun/api/chapters/display-chapter/${storyId}/${chapterNumber}`);
 
             const data = res.data.data || {};
 

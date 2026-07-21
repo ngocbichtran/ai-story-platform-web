@@ -57,7 +57,7 @@ export default function ChapterEditorPage() {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const res = await axios.get(`http://localhost:4000/api/chapters/display-chapter/${storyId}/${chapterNumber}`, config);
+            const res = await axios.get(`https://api.baostory.fun/api/chapters/display-chapter/${storyId}/${chapterNumber}`, config);
             const data = res.data.data || {};
 
             setChapter(data);

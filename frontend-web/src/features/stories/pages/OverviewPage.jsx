@@ -29,7 +29,7 @@ export default function ViewStoryDetail() {
                 };
 
                 // Gọi API getStoryDetails tổng hợp dữ liệu chéo MySQL + MongoDB
-                const res = await axios.get(`http://localhost:4000/api/stories/${storyId}`, config);
+                const res = await axios.get(`https://api.baostory.fun/api/stories/${storyId}`, config);
 
                 if (res.data.success) {
                     setStory(res.data.data);
