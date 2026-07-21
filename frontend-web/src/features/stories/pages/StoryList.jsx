@@ -24,7 +24,7 @@ export default function StoryList() {
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
             // Gọi chuẩn đường dẫn lấy danh sách truyện của riêng tác giả đang đăng nhập
-            const response = await axios.get("http://localhost:4000/api/stories/list", config);
+            const response = await axios.get("https://api.baostory.fun/api/stories/list", config);
 
             if (response.data.success) {
                 setStories(response.data.data || []);
@@ -53,7 +53,7 @@ export default function StoryList() {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const response = await axios.delete(`http://localhost:4000/api/stories/${storyId}`, config);
+            const response = await axios.delete(`https://api.baostory.fun/api/stories/${storyId}`, config);
 
             if (response.data.success) {
                 toast.success("Xóa tác phẩm thành công!");

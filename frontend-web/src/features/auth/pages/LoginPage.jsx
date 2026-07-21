@@ -1,14 +1,14 @@
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { useGoogleLogin } from "@react-oauth/google"; // 🟢 Dùng Hook chuẩn từ thư viện
+import { useGoogleLogin } from "@react-oauth/google"; // Dùng Hook chuẩn từ thư viện
 import loginImage from "../../../assets/images/login-banner.png";
 import logoImage from "../../../assets/images/logo-white.png";
 
 const LoginPage = () => {
     const navigate = useNavigate();
 
-    // 🟢 Khởi tạo hàm trigger Google Login chính chủ
+    // Khởi tạo hàm trigger Google Login chính chủ
     const loginWithGoogle = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
             try {
