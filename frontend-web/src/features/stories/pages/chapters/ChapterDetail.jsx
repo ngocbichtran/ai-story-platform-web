@@ -21,25 +21,18 @@ export default function ChapterDetailPage() {
         try {
             setLoading(true);
 
-            const res = await axios.get("http://localhost:4000/api/chapters/display-chapter", {
-                params: {
-                    story_id: storyId,
-                    chapter_number: chapterNumber,
-                },
-            });
+            const res = await axios.get(`http://localhost:4000/api/chapters/display-chapter/${storyId}/${chapterNumber}`);
 
             const data = res.data.data || {};
 
             setChapter(data);
-
             setChapterTitle(data.title || "Chưa đặt tên");
 
-            // API của bạn trả về displayContent
+            // API trả về displayContent hoặc content
             setDisplayContent(data.displayContent || data.content || "");
         } catch (err) {
             console.error(err);
-
-            toast.error("Không thể tải chương.");
+            toast.error("Không thể tải nội dung chương.");
 
             setChapter(null);
             setChapterTitle("");
@@ -61,10 +54,8 @@ export default function ChapterDetailPage() {
     };
 
     // INFO
-
     const wordCount = useMemo(() => {
         if (!displayContent) return 0;
-
         return displayContent.trim().split(/\s+/).filter(Boolean).length;
     }, [displayContent]);
 
@@ -72,7 +63,6 @@ export default function ChapterDetailPage() {
         if (!chapter?.updatedAt) {
             return new Date().toLocaleDateString("vi-VN");
         }
-
         return new Date(chapter.updatedAt).toLocaleDateString("vi-VN");
     }, [chapter]);
 
@@ -101,30 +91,28 @@ export default function ChapterDetailPage() {
             <section className="h-full flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 size={40} className="animate-spin text-blue-400" />
-
                     <span className="text-slate-400 text-sm">Đang tải nội dung chương...</span>
                 </div>
             </section>
         );
     }
+
     return (
         <section className="h-full flex flex-col overflow-hidden border-l border-white/5 bg-black/10">
             <div className="flex-1 overflow-y-auto custom-scroll px-6 py-6">
-                <div className="mx-auto flex h-full  flex-col">
+                <div className="mx-auto flex h-full flex-col">
                     {/* HEADER */}
                     <div className="mb-8">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             {/* Khối thông tin bên trái */}
                             <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                {/* Hàng trên: Gồm Nhãn chương và Tiêu đề */}
-                                {/* Trên mobile: xếp dọc (flex-col), Trên tablet trở lên: nằm chung hàng ngang (sm:flex-row sm:items-center) */}
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
                                     <span className="inline-block shrink-0 w-fit rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-blue-400">Chương {chapterNumber}</span>
 
                                     <h1 className="text-xl font-black text-white md:text-2xl break-words line-clamp-1 hover:line-clamp-none transition-all">{chapterTitle}</h1>
                                 </div>
 
-                                {/* Hàng dưới: Metadata giữ nguyên */}
+                                {/* Metadata */}
                                 <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-400">
                                     <div className="flex items-center gap-2">
                                         <CalendarDays size={16} className="text-slate-500" />
@@ -138,7 +126,7 @@ export default function ChapterDetailPage() {
                                 </div>
                             </div>
 
-                            {/* Nút Chỉnh sửa bên phải */}
+                            {/* Nút Chỉnh sửa */}
                             <button onClick={handleGoToEditor} className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/10 transition hover:from-blue-500 hover:to-violet-500 active:scale-95 shrink-0 w-full sm:w-auto">
                                 <Edit3 size={16} />
                                 <span>Chỉnh sửa</span>
@@ -149,23 +137,10 @@ export default function ChapterDetailPage() {
                     {/* CONTENT CARD */}
                     <div className="flex-1 min-h-0 flex flex-col">
                         <div className="flex-1 rounded-3xl border border-white/10 bg-[#10151E] shadow-2xl shadow-black/20 overflow-hidden">
-                            {/* Content */}
                             <div className="h-full overflow-hidden">
                                 {displayContent ? (
                                     <div className="h-full overflow-y-auto custom-scroll px-5 py-4">
-                                        <article
-                                            className="
-                        whitespace-pre-wrap
-                        break-words
-                        text-[18px]
-                        leading-9
-                        tracking-[0.01em]
-                        text-slate-200
-                        font-normal
-                    "
-                                        >
-                                            {displayContent}
-                                        </article>
+                                        <article className="whitespace-pre-wrap break-words text-[18px] leading-9 tracking-[0.01em] text-slate-200 font-normal">{displayContent}</article>
                                     </div>
                                 ) : (
                                     <div className="flex h-full flex-col items-center justify-center px-8">

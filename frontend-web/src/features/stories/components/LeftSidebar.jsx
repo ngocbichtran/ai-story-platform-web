@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, BookOpen, Layers, Users, FolderHeart, Plus, ScrollText, Clapperboard, Loader2, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Link } from "react-router-dom";
 
 export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter }) {
     const [chaptersList, setChaptersList] = useState([]);
@@ -27,7 +26,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
     const [chapterNumberInput, setChapterNumberInput] = useState("");
 
     // =========================================================================
-    // API: TẢI DANH SÁCH CHƯƠNG & THÔNG TIN DASHBOARD (ĐƯA RA NGOÀI ĐỂ DÙNG CHUNG)
+    // API: TẢI DANH SÁCH CHƯƠNG & THÔNG TIN DASHBOARD
     // =========================================================================
     const fetchData = async () => {
         if (!storyId) return;
@@ -36,10 +35,20 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const [storyRes, chaptersRes] = await Promise.all([axios.get(`http://localhost:4000/api/stories/${storyId}`, config), axios.get(`http://localhost:4000/api/stories/${storyId}/chapters`, config)]);
+            // Gọi đồng thời cả 2 API lấy Thông tin Truyện và Danh sách Chương
+            const [storyRes, chaptersRes] = await Promise.all([
+                axios.get(`http://localhost:4000/api/stories/${storyId}`, config), // API lấy thông tin bộ truyện
+                axios.get(`http://localhost:4000/api/chapters/${storyId}/chapters`, config), // API lấy danh sách chương
+            ]);
 
-            if (storyRes.data.success) setStory(storyRes.data.data);
-            if (chaptersRes.data.success) setChaptersList(chaptersRes.data.data || []);
+            // Cập nhật State khi dữ liệu phản hồi thành công
+            if (storyRes.data?.success) {
+                setStory(storyRes.data.data);
+            }
+
+            if (chaptersRes.data?.success) {
+                setChaptersList(chaptersRes.data.data || []);
+            }
         } catch (error) {
             console.error("Lỗi đồng bộ dữ liệu Sidebar:", error);
             toast.error(error.response?.data?.message || "Không thể tải danh mục tác phẩm.");
@@ -53,7 +62,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
     }, [storyId]);
 
     // =========================================================================
-    // API: TẠO CHƯƠNG MỚI
+    // API: TẠO CHƯƠNG MỚI (Đã đổi thành camelCase: chapterNumber)
     // =========================================================================
     const handleCreateChapter = async () => {
         if (!chapterTitle.trim()) {
@@ -73,11 +82,11 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
             const payload = {
-                chapter_number: parsedNumber,
+                chapterNumber: parsedNumber, // Chuẩn hóa camelCase
                 title: chapterTitle.trim(),
             };
 
-            const res = await axios.post(`http://localhost:4000/api/stories/${storyId}/chapters`, payload, config);
+            const res = await axios.post(`http://localhost:4000/api/chapters/${storyId}/chapters`, payload, config);
 
             if (res.data.success) {
                 const newChapterObj = res.data.data || {
@@ -110,7 +119,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
     // API: XÓA CHƯƠNG TRUYỆN MỀM (DỒN SỐ TỰ ĐỘNG)
     // =========================================================================
     const handleDeleteChapter = async (e, targetChapterNumber) => {
-        e.stopPropagation(); // Ngăn sự kiện bấm nút Xóa kích hoạt luôn việc chọn chương
+        e.stopPropagation();
 
         const confirm = window.confirm(`Bạn có chắc muốn xóa chương ${targetChapterNumber}? Các chương sau sẽ tự động dồn số thứ tự.`);
         if (!confirm) return;
@@ -119,7 +128,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const res = await axios.delete(`http://localhost:4000/api/stories/${storyId}/chapters/${targetChapterNumber}`, config);
+            const res = await axios.delete(`http://localhost:4000/api/chapters/${storyId}/chapters/${targetChapterNumber}`, config);
 
             if (res.data.success) {
                 toast.success("Xóa chương thành công!");
@@ -127,7 +136,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
                     setActiveChapter(null);
                     navigate(`/stories/${storyId}/editor/overview`);
                 }
-                fetchData(); // Tải lại danh sách mới từ DB sau khi dồn số
+                fetchData();
             }
         } catch (err) {
             toast.error(err.response?.data?.message || "Xóa thất bại.");
@@ -172,7 +181,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
                 ))}
             </div>
 
-            {/* 4. DANH SÁCH CHƯƠNG TỰ CO GIÃN THÔNG MINH (CÓ NÚT XÓA) */}
+            {/* 4. DANH SÁCH CHƯƠNG TỰ CO GIÃN THÔNG MINH */}
             <div className="flex-1 rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-3 flex flex-col overflow-hidden min-h-0">
                 <div className="text-[10px] uppercase font-black tracking-widest text-[#8b919e] mb-2.5 flex-none flex justify-between items-center">
                     <span>Danh sách chương</span>
@@ -211,7 +220,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
                                             </span>
                                         </button>
 
-                                        {/* NÚT XÓA CHƯƠNG: Chỉ hiện khi hover dòng dòng chương */}
+                                        {/* NÚT XÓA CHƯƠNG */}
                                         <button onClick={(e) => handleDeleteChapter(e, chapter.chapterNumber)} className="absolute right-2 p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover/chapter-row:opacity-100 transition-all duration-200" title={`Xóa chương ${chapter.chapterNumber}`}>
                                             <Trash2 size={13} />
                                         </button>

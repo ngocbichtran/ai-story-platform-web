@@ -44,20 +44,17 @@ function App() {
             <Routes>
                 {/* Default */}
                 <Route path="/" element={<Navigate to="/login" replace />} />
-
                 {/* Auth */}
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/forgotPassword" element={<ForgotPasswordPage />} />
-
                 {/* Dashboard */}
                 <Route element={<MainLayout />}>
                     <Route path="/home" element={<HomePage />} />
                     <Route path="/stories" element={<StoryList />} />
                     <Route path="/changePassword" element={<ChangePasswordPage />} />
                 </Route>
-
-                {/* Story Editor - Cac router nay la outlet (khung phai) trong StoryEditorPage */}
+                {/* Story Editor - Cac router nay la outlet (khung trai) trong StoryEditorPage */}
                 <Route path="/stories/:storyId/editor" element={<StoryEditorPage />}>
                     <Route index element={<Navigate to="overview" replace />} />
                     <Route path="overview" element={<OverviewPage />} />
@@ -66,26 +63,22 @@ function App() {
                     <Route path="characters" element={<CharacterListPage />} />
                     <Route path="plot" element={<PlotList />} />
                 </Route>
-
                 {/* Story */}
                 <Route path="/stories/create" element={<CreateStory />} />
                 <Route path="/stories/:storyId/edit" element={<EditStory />} />
-
                 {/* Worlds */}
                 <Route path="/stories/:storyId/worlds/create" element={<CreateWorldPage />} />
                 <Route path="/stories/:storyId/editor/worlds/:worldId" element={<DetailWorldPage />} />
                 <Route path="/stories/:storyId/editor/worlds/:worldId/edit" element={<EditWorldPage />} />
-
                 {/* Characters */}
                 <Route path="/stories/:storyId/editor/characters/:characterId" element={<CharacterDetailPage />} />
                 <Route path="/stories/:storyId/editor/characters/create" element={<CreateCharacterPage />} />
                 <Route path="/stories/:storyId/editor/characters/edit/:characterId" element={<EditCharacterPage />} />
-
                 {/* Plots */}
                 {/* Plans */}
                 <Route path="/stories/:storyId/editor/plan" element={<ChapterSceneManager />} />
-
                 {/* Chapters */}
+                {/* Sửa chương */}
                 <Route path="/stories/:storyId/editor/chapter/:chapterNumber/edit" element={<ChapterEditorPage />} />
             </Routes>
         </BrowserRouter>

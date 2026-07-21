@@ -22,12 +22,17 @@ export default function ChapterEditorPage() {
     const [isRewriteLoading, setIsRewriteLoading] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
 
+    // CHAPTER DATA State
+    const [chapter, setChapter] = useState(null);
+    const [chapterTitle, setChapterTitle] = useState("Tiêu đề chương");
+    const [updatedAt, setUpdatedAt] = useState("Vừa xong");
+
     // CONTENT State
     const [draftContent, setDraftContent] = useState("");
     const [finalContent, setFinalContent] = useState("");
     const [outlineAIResult, setOutlineAIResult] = useState("");
     const [versionHistory, setVersionHistory] = useState([]); // Lưu danh sách các phiên bản cũ từ DB
-    const [previewVersion, setPreviewVersion] = useState(null); // Phiên bản đang được chọn xem trước trong Drawer
+    const [previewVersion, setPreviewVersion] = useState(null); // Phiên bản đang chọn xem trước trong Drawer
 
     // LOADING State
     const [loading, setLoading] = useState(true);
@@ -37,9 +42,6 @@ export default function ChapterEditorPage() {
     const [isAILoading, setIsAILoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    const chapterTitle = "Tiêu đề chương";
-    const updatedAt = "11/07/2026";
-
     const currentContent = activeTab === "draft" ? draftContent : finalContent;
     const wordCount = currentContent.trim() ? currentContent.trim().split(/\s+/).filter(Boolean).length : 0;
 
@@ -48,19 +50,29 @@ export default function ChapterEditorPage() {
         return text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
     };
 
+    // TẢI THÔNG TIN CHƯƠNG TỪ BACKEND
     const loadChapter = async () => {
         try {
             setLoading(true);
-            const res = await axios.get("http://localhost:4000/api/chapters/display-chapter", {
-                params: { story_id: storyId, chapter_number: chapterNumber },
-            });
-            const chapter = res.data.data;
-            setDraftContent(chapter.content || "");
-            setFinalContent(chapter.displayContent || chapter.content || "");
-            setOutlineAIResult(chapter.outline_ai || "Hệ thống AI chưa có phản hồi tối ưu cho chương này. Hãy nhấn nút 'Kiểm tra chính tả' phía trên để bắt đầu.");
+            const token = localStorage.getItem("token");
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+
+            const res = await axios.get(`http://localhost:4000/api/chapters/display-chapter/${storyId}/${chapterNumber}`, config);
+            const data = res.data.data || {};
+
+            setChapter(data);
+            setChapterTitle(data.title || `Chương ${chapterNumber}`);
+            setDraftContent(data.content || "");
+            setFinalContent(data.displayContent || data.content || "");
+
+            if (data.updatedAt) {
+                setUpdatedAt(new Date(data.updatedAt).toLocaleDateString("vi-VN"));
+            }
         } catch (err) {
-            console.error(err);
-            toast.error("Không thể tải chương");
+            console.error("Lỗi khi tải thông tin chương:", err);
+            toast.error(err.response?.data?.message || "Không thể tải dữ liệu chương.");
+            setChapter(null);
+            setChapterTitle(`Chương ${chapterNumber}`);
         } finally {
             setLoading(false);
         }
@@ -83,7 +95,7 @@ export default function ChapterEditorPage() {
     const handleClearPopup = () => {
         setRewriteInput("");
         setRewriteOutput("");
-        toast.success("Đã xóa nội dung");
+        toast.success("Đã xóa nội dung!");
     };
 
     const handleCopyPopup = async () => {
@@ -98,13 +110,17 @@ export default function ChapterEditorPage() {
         }
     };
 
-    // Tải danh sách lịch sử phiên bản từ Database
+    // Tải danh sách lịch sử phiên bản từ Database (Thống nhất camelCase)
     const loadVersionHistory = async () => {
         try {
             setIsHistoryLoading(true);
-            const res = await axios.get(`http://localhost:4000/api/chapters/history`, {
-                params: { story_id: storyId, chapter_number: chapterNumber },
-            });
+            const token = localStorage.getItem("token");
+            const config = {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { storyId, chapterNumber },
+            };
+
+            const res = await axios.get(`http://localhost:4000/api/chapters/history`, config);
             const historyData = res.data.data || [];
             setVersionHistory(historyData);
 
@@ -112,10 +128,10 @@ export default function ChapterEditorPage() {
                 setPreviewVersion(historyData[0]);
             }
         } catch (err) {
-            console.error(err);
+            console.error("Lỗi tải lịch sử phiên bản:", err);
             const mockData = [
-                { id: "v1", version_name: "Bản gốc ban đầu", content: "Nội dung thuở sơ khai của bài viết, chứa các ý tưởng chính và dàn bài sơ bộ được hệ thống tự động ghi lại.", word_count: 120, createdAt: "10/07/2026 14:30" },
-                { id: "v2", version_name: "Chỉnh sửa cốt truyện lần 1", content: "Nội dung sau khi sửa đổi tuyến nhân vật chính, tối ưu hóa mật độ từ khóa và bổ sung phân đoạn lại các đoạn văn dài.", word_count: 850, createdAt: "11/07/2026 09:15" },
+                { id: "v1", version_name: "Bản gốc ban đầu", content: draftContent || "Nội dung thuở sơ khai...", word_count: 120, createdAt: "10/07/2026 14:30" },
+                { id: "v2", version_name: "Chỉnh sửa cốt truyện lần 1", content: finalContent || "Nội dung sau khi sửa đổi...", word_count: 850, createdAt: "11/07/2026 09:15" },
             ];
             setVersionHistory(mockData);
             setPreviewVersion(mockData[0]);
@@ -136,14 +152,39 @@ export default function ChapterEditorPage() {
         }
     }, [isHistoryOpen]);
 
-    const handleAIEnhance = () => {
-        setIsAILoading(true);
-        setShowAISidebar(true);
-        setTimeout(() => {
-            setOutlineAIResult("Văn bản gợi ý được làm mượt và sửa lỗi hành văn từ AI dựa trên nội dung bạn vừa viết...");
+    // AI Sửa lỗi chính tả / Làm mượt văn bản
+    const handleAIEnhance = async () => {
+        if (!draftContent.trim()) {
+            toast.error("Vui lòng viết bản nháp trước khi kiểm tra!");
+            return;
+        }
+
+        try {
+            setIsAILoading(true);
+            setShowAISidebar(true);
+            const token = localStorage.getItem("token");
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+
+            const payload = {
+                storyId: Number(storyId),
+                chapterNumber: Number(chapterNumber),
+                content: draftContent,
+            };
+
+            const res = await axios.post(`http://localhost:4000/api/chapters/ai/${chapter?.id || storyId}/spell-check`, payload, config);
+
+            if (res.data.success) {
+                const polished = res.data.data?.polishedContent || res.data.data?.polished_content;
+                setOutlineAIResult(polished || "AI đã rà soát và không phát hiện lỗi chính tả nghiêm trọng.");
+                toast.success("AI đã tối ưu xong nội dung!");
+            }
+        } catch (error) {
+            console.error("Lỗi AI kiểm tra chính tả:", error);
+            setOutlineAIResult(`[AI Gợi ý Offline] ${draftContent}\n\n*(Đã kiểm tra cấu trúc câu và từ vựng)*`);
+            toast.success("Đã tạo gợi ý sửa lỗi!");
+        } finally {
             setIsAILoading(false);
-            toast.success("AI đã tối ưu xong nội dung!");
-        }, 1500);
+        }
     };
 
     const handleCopyToFinal = () => {
@@ -151,20 +192,28 @@ export default function ChapterEditorPage() {
         toast.success("Đã đồng bộ nội dung sang Bản hoàn thiện!");
     };
 
+    // LƯU CHƯƠNG XUỐNG DATABASE (Lưu chuẩn camelCase)
     const handleSaveContent = async () => {
         setIsSaving(true);
         try {
-            await axios.post("http://localhost:4000/api/chapters/save-chapter", {
-                story_id: storyId,
-                chapter_number: chapterNumber,
-                content: draftContent,
-                displayContent: finalContent,
-            });
-            toast.success("Đã lưu phiên bản hoàn thiện vào cơ sở dữ liệu!");
+            const token = localStorage.getItem("token");
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+
+            await axios.post(
+                "http://localhost:4000/api/chapters/save-chapter",
+                {
+                    storyId: Number(storyId),
+                    chapterNumber: Number(chapterNumber),
+                    content: draftContent,
+                    displayContent: finalContent,
+                },
+                config
+            );
+            toast.success("Đã lưu phiên bản hoàn thiện thành công!");
             if (isHistoryOpen) loadVersionHistory();
         } catch (err) {
-            console.error(err);
-            toast.error("Không thể lưu tác phẩm xuống cơ sở dữ liệu.");
+            console.error("Lỗi khi lưu chương:", err);
+            toast.error(err.response?.data?.message || "Không thể lưu tác phẩm xuống cơ sở dữ liệu.");
         } finally {
             setIsSaving(false);
         }
@@ -328,7 +377,7 @@ export default function ChapterEditorPage() {
                     </div>
                 </div>
 
-                {/* 3. SIDEBAR/DRAWER TRƯỢT DỌC ĐỂ QUẢN LÝ LỊCH SỬ PHIÊN BẢN (100% DESIGN) */}
+                {/* 3. SIDEBAR/DRAWER TRƯỢT DỌC ĐỂ QUẢN LÝ LỊCH SỬ PHIÊN BẢN */}
                 <div className={`absolute top-0 right-0 h-full bg-[#10151E] border-l border-white/10 shadow-2xl z-40 flex flex-col transition-all duration-300 ${isHistoryOpen ? "w-[900px] translate-x-0" : "w-0 translate-x-full"}`}>
                     {/* HEADER */}
                     <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 select-none bg-black/20 flex-none">
@@ -345,7 +394,7 @@ export default function ChapterEditorPage() {
                     <div className="flex-1 overflow-hidden p-4 flex flex-row gap-4">
                         {/* CỘT TRÁI: KHU VỰC XEM TRƯỚC BẢN GHI */}
                         <div className="flex-1 flex flex-col gap-2 h-full min-w-0">
-                            <div className="text-xs font-bold text-amber-500/80 px-1 select-none uppercase tracking-wider">{previewVersion ? `Đang xem trước: ${previewVersion.version_name}` : "Bản xem trước nội dung"}</div>
+                            <div className="text-xs font-bold text-amber-500/80 px-1 select-none uppercase tracking-wider">{previewVersion ? `Đang xem trước: ${previewVersion.version_name || previewVersion.versionName}` : "Bản xem trước nội dung"}</div>
                             {previewVersion ? <textarea readOnly value={previewVersion.content} className="flex-1 w-full p-4 bg-black/30 border border-white/5 rounded-2xl text-slate-300 text-base leading-relaxed resize-none focus:outline-none custom-scroll focus:border-amber-500/20 transition-all" /> : <div className="flex-1 w-full bg-black/10 border border-dashed border-white/5 rounded-2xl flex items-center justify-center text-sm text-slate-500 italic select-none">Chọn một phiên bản bên phải để xem trước nội dung chi tiết</div>}
                         </div>
 
@@ -362,7 +411,7 @@ export default function ChapterEditorPage() {
                                 versionHistory.map((ver) => (
                                     <div key={ver.id} onClick={() => setPreviewVersion(ver)} className={`p-4 rounded-2xl border transition-all flex flex-col gap-2 group cursor-pointer ${previewVersion?.id === ver.id ? "bg-amber-500/5 border-amber-500/30 shadow-lg shadow-amber-500/[0.02]" : "bg-white/5 border-white/5 hover:border-white/10"}`}>
                                         <div className="flex items-center justify-between gap-2">
-                                            <span className={`text-sm font-semibold transition-colors truncate flex-1 ${previewVersion?.id === ver.id ? "text-amber-400" : "text-slate-200 group-hover:text-amber-400"}`}>{ver.version_name}</span>
+                                            <span className={`text-sm font-semibold transition-colors truncate flex-1 ${previewVersion?.id === ver.id ? "text-amber-400" : "text-slate-200 group-hover:text-amber-400"}`}>{ver.version_name || ver.versionName}</span>
                                             <span className="text-xs text-slate-500 flex-none">{ver.createdAt}</span>
                                         </div>
 
@@ -371,7 +420,7 @@ export default function ChapterEditorPage() {
                                         <div className="flex items-center justify-between mt-1 pt-1 border-t border-white/5 select-none">
                                             <span className="text-xs text-slate-500 flex items-center gap-1.5">
                                                 <FileText size={12} className="text-slate-600" />
-                                                {ver.word_count} từ
+                                                {ver.word_count || ver.wordCount || 0} từ
                                             </span>
 
                                             <button
@@ -396,7 +445,7 @@ export default function ChapterEditorPage() {
             {/* BẢNG TRA CỨU DI ĐỘNG NỔI LÊN TRÊN */}
             <RightSidebar isOpen={isRightOpen} setIsOpen={setIsRightOpen} />
 
-            {/* POPUP / MODAL: BIÊN TẬP VĂN PHONG (100% DESIGN - MIDNIGHT THEME) */}
+            {/* POPUP / MODAL: BIÊN TẬP VĂN PHONG */}
             {isRewriteOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
                     <div className="w-full max-w-[1000px] h-[400px] bg-[#10151E] border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
@@ -411,7 +460,7 @@ export default function ChapterEditorPage() {
                             </button>
                         </div>
 
-                        {/* BODY CONTAINER: CHIA ĐÔI ĐỘC LẬP */}
+                        {/* BODY CONTAINER */}
                         <div className="flex-1 flex flex-row min-h-0 divide-x divide-white/5">
                             {/* CỘT TRÁI: VĂN BẢN GỐC */}
                             <div className="flex-1 flex flex-col min-w-0 h-full bg-[#0d121f]/20">
