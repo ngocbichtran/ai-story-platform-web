@@ -1,6 +1,8 @@
-import React, { useState } from "react";
-import { ArrowLeft, Globe2, Map, Sparkles } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
+import toast from "react-hot-toast";
+import { ArrowLeft, Globe2, Map, Sparkles, Loader2 } from "lucide-react";
 
 export default function DetailWorldPage() {
     const navigate = useNavigate();
@@ -11,23 +13,55 @@ export default function DetailWorldPage() {
     const [mechanicTab, setMechanicTab] = useState("power");
 
     // =========================
-    // MOCK DATA
+    // STATES CHO DỮ LIỆU THẬT TỪ API
     // =========================
-    const world = {
-        _id: worldId,
-        storyId,
-        title: "Đế Quốc Thiên Vân",
-        description: "Một đế quốc rộng lớn thống trị lục địa phía Đông.",
-        geography: ["Bắc Cảnh", "Nam Vực"],
-        history: "Lịch sử hình thành đế quốc kéo dài hàng nghìn năm. Sau nhiều cuộc chiến, Thiên Vân trở thành thế lực mạnh nhất của đại lục.",
-        culture: "Người dân coi trọng danh dự, võ đạo và lòng trung thành. Hằng năm đều tổ chức lễ hội Thiên Hỏa để tưởng nhớ tổ tiên.",
-        powerSystems: [
-            { name: "Thiên Nguyên", description: "Hệ thống tu luyện hấp thụ linh khí trời đất để đột phá cảnh giới và gia tăng sức mạnh." },
-            { name: "Ma Pháp Nguyên Tố", description: "Người sử dụng điều khiển các nguyên tố như Hỏa, Thủy, Phong, Lôi và Thổ thông qua ma lực bẩm sinh hoặc pháp trượng." },
-            { name: "Linh Thú Khế Ước", description: "Người tu luyện ký kết khế ước với linh thú để chia sẻ sức mạnh, kỹ năng và cùng chiến đấu." },
-        ],
-        rules: ["Người thường không thể sử dụng ma pháp.", "Mỗi người chỉ thức tỉnh một thuộc tính."],
-    };
+    const [world, setWorld] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchWorldDetail = async () => {
+            try {
+                setLoading(true);
+                const token = localStorage.getItem("token");
+                const config = { headers: { Authorization: `Bearer ${token}` } };
+
+                // Gọi API lấy chi tiết thế giới theo worldId
+                const res = await axios.get(`https://api.baostory.fun/api/world/detail/${worldId}`, config);
+                if (res.data.success) {
+                    setWorld(res.data.data);
+                }
+            } catch (err) {
+                console.error("Lỗi tải chi tiết thế giới:", err);
+                toast.error("Không thể tải thông tin bối cảnh thế giới.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (worldId) {
+            fetchWorldDetail();
+        }
+    }, [worldId]);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-[#070b14] text-slate-400 gap-2">
+                <Loader2 size={28} className="animate-spin text-blue-500" />
+                <span>Đang tải thông tin thế giới...</span>
+            </div>
+        );
+    }
+
+    if (!world) {
+        return (
+            <div className="flex flex-col items-center justify-center h-screen bg-[#070b14] text-slate-400 gap-4">
+                <p>Không tìm thấy dữ liệu thế giới.</p>
+                <button onClick={() => navigate(-1)} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold">
+                    Quay lại
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="relative min-h-screen overflow-hidden bg-[#070b14] text-white font-sans antialiased">
@@ -91,9 +125,9 @@ export default function DetailWorldPage() {
                                 </div>
                             </div>
                             <div className="mt-4 flex-1 overflow-y-auto max-h-[440px] rounded-xl border border-white/5 bg-slate-950/30 p-5 text-[15px] md:text-base leading-relaxed text-slate-300 tracking-wide shadow-inner scrollbar-thin scrollbar-thumb-white/10">
-                                {infoTab === "description" && <p className="whitespace-pre-wrap">{world.description}</p>}
-                                {infoTab === "history" && <p className="whitespace-pre-wrap">{world.history}</p>}
-                                {infoTab === "culture" && <p className="whitespace-pre-wrap">{world.culture}</p>}
+                                {infoTab === "description" && <p className="whitespace-pre-wrap">{world.description || "Chưa có thông tin giới thiệu."}</p>}
+                                {infoTab === "history" && <p className="whitespace-pre-wrap">{world.history || "Chưa có thông tin lịch sử."}</p>}
+                                {infoTab === "culture" && <p className="whitespace-pre-wrap">{world.culture || "Chưa có thông tin văn hóa."}</p>}
                             </div>
                         </section>
                     )}
@@ -111,7 +145,7 @@ export default function DetailWorldPage() {
                                         <h2 className="text-sm font-bold tracking-wide text-slate-100">Địa danh</h2>
                                     </div>
                                     <div className="mt-3 flex-1 overflow-y-auto pr-1 custom-scroll">
-                                        {world.geography.length === 0 ? (
+                                        {!world.geography || world.geography.length === 0 ? (
                                             <div className="flex h-full items-center justify-center text-xs text-slate-500 italic">Chưa có địa danh</div>
                                         ) : (
                                             <div className="grid grid-cols-2 gap-2">
@@ -144,29 +178,37 @@ export default function DetailWorldPage() {
                                         </div>
                                     </div>
 
-                                    {/* Khối content cơ chế - Đã fix lỗi đè và crash chiều cao */}
+                                    {/* Khối content cơ chế */}
                                     <div className="mt-3 flex-1 overflow-y-auto pr-1 custom-scroll">
                                         {mechanicTab === "power" && (
                                             <div className="flex flex-col gap-2 w-full">
-                                                {world.powerSystems.map((system, index) => (
-                                                    <article key={index} className="rounded-xl border border-white/5 bg-slate-900/40 p-3 transition-all hover:border-yellow-500/20 hover:bg-yellow-500/5 shadow-sm">
-                                                        <h4 className="text-xs font-bold text-yellow-400 tracking-wide">{system.name}</h4>
-                                                        <p className="mt-1 text-[11px] leading-relaxed text-slate-300">{system.description}</p>
-                                                    </article>
-                                                ))}
+                                                {!world.powerSystems || world.powerSystems.length === 0 ? (
+                                                    <div className="flex h-32 items-center justify-center text-xs text-slate-500 italic">Chưa có hệ thống sức mạnh</div>
+                                                ) : (
+                                                    world.powerSystems.map((system, index) => (
+                                                        <article key={index} className="rounded-xl border border-white/5 bg-slate-900/40 p-3 transition-all hover:border-yellow-500/20 hover:bg-yellow-500/5 shadow-sm">
+                                                            <h4 className="text-xs font-bold text-yellow-400 tracking-wide">{system.name}</h4>
+                                                            <p className="mt-1 text-[11px] leading-relaxed text-slate-300">{system.description}</p>
+                                                        </article>
+                                                    ))
+                                                )}
                                             </div>
                                         )}
 
                                         {mechanicTab === "rules" && (
                                             <div className="flex flex-col gap-2 w-full">
-                                                {world.rules.map((rule, index) => (
-                                                    <article key={index} className="rounded-xl border border-white/5 bg-white/5 p-3 transition-all hover:border-red-500/20 hover:bg-red-500/5">
-                                                        <div className="flex items-start gap-2.5">
-                                                            <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400 shadow shadow-red-400" />
-                                                            <p className="text-xs md:text-sm leading-relaxed text-slate-300">{rule}</p>
-                                                        </div>
-                                                    </article>
-                                                ))}
+                                                {!world.rules || world.rules.length === 0 ? (
+                                                    <div className="flex h-32 items-center justify-center text-xs text-slate-500 italic">Chưa có quy luật nào</div>
+                                                ) : (
+                                                    world.rules.map((rule, index) => (
+                                                        <article key={index} className="rounded-xl border border-white/5 bg-white/5 p-3 transition-all hover:border-red-500/20 hover:bg-red-500/5">
+                                                            <div className="flex items-start gap-2.5">
+                                                                <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400 shadow shadow-red-400" />
+                                                                <p className="text-xs md:text-sm leading-relaxed text-slate-300">{rule}</p>
+                                                            </div>
+                                                        </article>
+                                                    ))
+                                                )}
                                             </div>
                                         )}
                                     </div>

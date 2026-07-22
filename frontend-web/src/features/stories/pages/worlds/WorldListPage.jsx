@@ -1,31 +1,69 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Plus, Globe2, Eye, Trash2 } from "lucide-react";
+import axios from "axios";
+import toast from "react-hot-toast";
+import { Plus, Globe2, Trash2, Loader2 } from "lucide-react";
 
 export default function WorldListPage() {
     const navigate = useNavigate();
     const { storyId } = useParams();
 
     // =========================
-    // MOCK DATA
+    // STATES
     // =========================
-    const [loading] = useState(false);
-    const [worlds] = useState([
-        { id: 1, name: "Đế Quốc Thiên Vân", description: "Một đế quốc rộng lớn với bề dày lịch sử hàng ngàn năm.", territory_count: 12, main_race: "Tu tiên giả" },
-        { id: 2, name: "Vương Quốc Ánh Sáng", description: "Vùng đất của những sinh vật huyền bí.", territory_count: 5, main_race: "Tinh linh" },
-        { id: 3, name: "Lục Địa Huyết Nguyệt", description: "Một thế giới bị nguyền rủa.", territory_count: 18, main_race: "Ma tộc" },
-        { id: 4, name: "Thành Phố Cơ Khí", description: "Nền văn minh steampunk.", territory_count: 7, main_race: "Người máy" },
-        { id: 5, name: "Đại Dương Băng Giá", description: "Thế giới biển băng.", territory_count: 9, main_race: "Hải tộc" },
-        { id: 6, name: "Rừng Cổ Linh", description: "Khu rừng hàng triệu năm tuổi.", territory_count: 15, main_race: "Tinh linh" },
-        { id: 7, name: "Sa Mạc Hỏa Diệm", description: "Sa mạc đỏ rực lửa.", territory_count: 8, main_race: "Long tộc" },
-    ]);
+    const [loading, setLoading] = useState(true);
+    const [worlds, setWorlds] = useState([]);
 
     // =========================
-    // HANDLE
+    // FETCH WORLDS API
     // =========================
-    const handleDeleteWorld = (worldId) => {
-        if (!window.confirm("Bạn có chắc muốn xóa thế giới này?")) return;
-        console.log("Delete:", worldId);
+    const fetchWorlds = async () => {
+        try {
+            setLoading(true);
+            const token = localStorage.getItem("token");
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+
+            const res = await axios.get(`https://api.baostory.fun/api/world/list/${storyId}`, config);
+            if (res.data.success) {
+                setWorlds(res.data.data || []);
+            }
+        } catch (err) {
+            console.error("Lỗi tải danh sách thế giới:", err);
+            toast.error("Không thể tải danh sách bối cảnh thế giới.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (storyId) {
+            fetchWorlds();
+        }
+    }, [storyId]);
+
+    // =========================
+    // HANDLE DELETE (Tùy chọn mở rộng)
+    // =========================
+    const handleDeleteWorld = async (worldId) => {
+        if (!window.confirm("Bạn có chắc muốn xóa vĩnh viễn thế giới này?")) return;
+
+        try {
+            const token = localStorage.getItem("token");
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+
+            // Kích hoạt HTTP DELETE Request lên Server theo đúng endpoint /api/world/:worldId
+            const res = await axios.delete(`https://api.baostory.fun/api/world/${worldId}`, config);
+
+            if (res.data.success) {
+                // Lọc bỏ thế giới vừa xóa khỏi danh sách trên state giao diện
+                setWorlds((prev) => prev.filter((w) => w.id !== worldId));
+                toast.success("Xóa bối cảnh thế giới thành công.");
+            }
+        } catch (err) {
+            console.error("Lỗi xóa thế giới:", err);
+            const errorMsg = err.response?.data?.message || "Không thể xóa thế giới.";
+            toast.error(errorMsg);
+        }
     };
 
     const handleCreateWorld = () => {
@@ -54,7 +92,10 @@ export default function WorldListPage() {
 
             {/* BODY */}
             {loading ? (
-                <div className="flex flex-1 items-center justify-center text-slate-400">Đang tải...</div>
+                <div className="flex flex-1 items-center justify-center text-slate-400 gap-2">
+                    <Loader2 size={24} className="animate-spin text-blue-400" />
+                    <span>Đang tải danh sách thế giới...</span>
+                </div>
             ) : worlds.length === 0 ? (
                 <div className="mt-6 flex flex-1 flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/5">
                     <Globe2 size={80} className="mb-6 text-slate-500" />
@@ -65,13 +106,16 @@ export default function WorldListPage() {
                 <div className="mt-6 flex-1 overflow-y-auto rounded-3xl border border-white/10 bg-white/5 p-6 writing-canvas-scroll">
                     <div className="grid grid-cols-4 gap-4">
                         {worlds.map((world) => (
-                            <div key={world.id} className="group rounded-2xl border border-white/10 bg-gradient-to-b from-slate-800/70 to-slate-900/80 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-xl hover:shadow-blue-900/20">
-                                <div className="flex h-full flex-col">
-                                    {/* Tên */}
-                                    <h3 className="flex-1 text-center text-sm font-bold leading-6 text-white line-clamp-2 min-h-[48px]">{world.name}</h3>
+                            <div key={world.id} className="group rounded-2xl border border-white/10 bg-gradient-to-b from-slate-800/70 to-slate-900/80 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-xl hover:shadow-blue-900/20 flex flex-col justify-between">
+                                <div className="flex h-full flex-col justify-between gap-4">
+                                    {/* Nội dung thông tin thế giới */}
+                                    <div>
+                                        <h3 className="text-sm font-bold leading-6 text-white line-clamp-2">{world.title}</h3>
+                                        <p className="mt-1.5 text-xs text-slate-400 line-clamp-3 leading-relaxed">{world.description || "Chưa có mô tả chi tiết cho thế giới này."}</p>
+                                    </div>
 
-                                    {/* Footer */}
-                                    <div className="flex gap-2">
+                                    {/* Footer / Actions */}
+                                    <div className="flex gap-2 pt-2 border-t border-white/5">
                                         <button onClick={() => navigate(`/stories/${storyId}/editor/worlds/${world.id}`)} className="flex-1 flex h-10 items-center justify-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/10 text-sm font-medium text-blue-300 transition-all hover:bg-blue-600 hover:text-white">
                                             Chi tiết
                                         </button>

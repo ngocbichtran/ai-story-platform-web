@@ -154,7 +154,9 @@ export default function CreateStory() {
             setLoadingStories(false);
         }
     };
-    //AI đảo ngược ý tưởng
+    // =========================
+    // API: AI ĐẢO NGƯỢC Ý TƯỞNG
+    // =========================
     const handleReverseDescription = async () => {
         if (!selectedStory) {
             toast.error("Vui lòng chọn tác phẩm.");
@@ -163,29 +165,34 @@ export default function CreateStory() {
 
         try {
             setIsReversing(true);
-
             const token = localStorage.getItem("token");
+
+            // Tìm truyện được chọn để lấy nội dung mô tả gửi kèm lên (nếu Webhook cần)
+            const currentSelected = userStories.find((story) => Number(story.id) === Number(selectedStory));
 
             const res = await axios.post(
                 `https://api.baostory.fun/api/stories/${selectedStory}/reverse-description`,
-                {},
                 {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    description: currentSelected?.description || reverseIdea,
+                },
+                {
+                    headers: { Authorization: `Bearer ${token}` },
                 }
             );
 
+            // Kiểm tra success và lấy kết quả trực tiếp từ res.data
             if (res.data.success) {
-                setStoryPlanning(res.data.data.reverseDescription);
+                // Sửa lại thành res.data.reverseDescription (hoặc fallback res.data.data?.reverseDescription)
+                const resultText = res.data.reverseDescription || res.data.data?.reverseDescription;
 
+                setStoryPlanning(resultText);
                 toast.success("Đảo ngược ý tưởng thành công!");
             } else {
-                toast.error(res.data.message);
+                toast.error(res.data.message || "Không thể đảo ngược ý tưởng.");
             }
         } catch (err) {
-            console.error(err);
-            toast.error(err.response?.data?.message || "Không thể kết nối AI.");
+            console.error("Lỗi gọi AI reverse:", err);
+            toast.error(err.response?.data?.message || "Lỗi xử lý hệ thống AI.");
         } finally {
             setIsReversing(false);
         }
