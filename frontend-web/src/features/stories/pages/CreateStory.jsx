@@ -22,7 +22,7 @@ export default function CreateStory() {
     const [selectedGenres, setSelectedGenres] = useState([]);
     const [coverPreview, setCoverPreview] = useState(null);
     const [coverFile, setCoverFile] = useState(null);
-
+    const [isReversing, setIsReversing] = useState(false);
     // Lấy danh sách thể loại
     const fetchGenres = async () => {
         try {
@@ -154,11 +154,61 @@ export default function CreateStory() {
             setLoadingStories(false);
         }
     };
+    //AI đảo ngược ý tưởng
+    const handleReverseDescription = async () => {
+        if (!selectedStory) {
+            toast.error("Vui lòng chọn tác phẩm.");
+            return;
+        }
 
+        try {
+            setIsReversing(true);
+
+            const token = localStorage.getItem("token");
+
+            const res = await axios.post(
+                `https://api.baostory.fun/api/stories/${selectedStory}/reverse-description`,
+                {},
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            if (res.data.success) {
+                setStoryPlanning(res.data.data.reverseDescription);
+
+                toast.success("Đảo ngược ý tưởng thành công!");
+            } else {
+                toast.error(res.data.message);
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error(err.response?.data?.message || "Không thể kết nối AI.");
+        } finally {
+            setIsReversing(false);
+        }
+    };
+    // Load dữ liệu ban đầu
     useEffect(() => {
         fetchStories();
         fetchGenres();
     }, []);
+
+    // Khi đổi tác phẩm được chọn thì hiển thị mô tả gốc
+    useEffect(() => {
+        if (!selectedStory) {
+            setReverseIdea("");
+            return;
+        }
+
+        const story = stories.find((story) => Number(story.id) === Number(selectedStory));
+
+        if (story) {
+            setReverseIdea(story.description || "");
+        }
+    }, [selectedStory, stories]);
 
     const preparePayload = () => {
         const genreIds = selectedGenres.map((g) => g.id);
@@ -278,8 +328,8 @@ export default function CreateStory() {
                                             label: story.title,
                                         }))}
                                     />
-                                    <button type="button" className="h-12 whitespace-nowrap rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 font-semibold transition hover:scale-[1.02] active:scale-95">
-                                        Đảo ngược
+                                    <button type="button" onClick={handleReverseDescription} disabled={isReversing} className="h-12 whitespace-nowrap rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 font-semibold transition hover:scale-[1.02] active:scale-95 disabled:opacity-50">
+                                        {isReversing ? <Loader2 className="animate-spin" size={18} /> : "Đảo ngược"}
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">

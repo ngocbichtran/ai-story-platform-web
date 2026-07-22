@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { BookOpen, ArrowLeft, Loader2, Save, Lightbulb, Copy, CopyCheck, X } from "lucide-react";
+import { BookOpen, ArrowLeft, Loader2, Save, Lightbulb, Copy, Check, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import axios from "axios";
+import CustomSelect from "../../../features/styles/CustomSelect";
 
 export default function EditStory() {
     const navigate = useNavigate();
-    const { storyId } = useParams(); // Lấy ID truyện từ URL thanh địa chỉ
+    const { storyId } = useParams();
 
     // =========================
     // STATE DỮ LIỆU THỰC TẾ
@@ -17,30 +18,28 @@ export default function EditStory() {
     const [storyPlanning, setStoryPlanning] = useState("");
 
     const [isSaving, setIsSaving] = useState(false);
-    const [isLoading, setIsLoading] = useState(true); // Trạng thái đợi tải dữ liệu từ DB
+    const [isLoading, setIsLoading] = useState(true);
 
     const [showGenreModal, setShowGenreModal] = useState(false);
-    const [genres, setGenres] = useState([]); // Danh sách thể loại tổng dạng Object: [{id, name}]
-    const [selectedGenres, setSelectedGenres] = useState([]); // Mảng các Object thể loại được chọn
+    const [genres, setGenres] = useState([]);
+    const [selectedGenres, setSelectedGenres] = useState([]);
 
-    const [showCreateGenre, setShowCreateGenre] = useState(false);
     const [newGenre, setNewGenre] = useState("");
 
     const [coverPreview, setCoverPreview] = useState(null);
     const [coverFile, setCoverFile] = useState(null);
 
+    // =========================
+    // STATE CHO TÍNH NĂNG AI REVERSE
+    // =========================
     const [selectedStory, setSelectedStory] = useState("");
     const [reverseIdea, setReverseIdea] = useState("");
-
-    // Danh sách tác phẩm giả lập cho phân hệ AI Reverse
-    const stories = [
-        { id: 1, title: "Sherlock Holmes" },
-        { id: 2, title: "Chuyển sinh làm kiếm" },
-        { id: 3, title: "Ma Đạo" },
-    ];
+    const [userStories, setUserStories] = useState([]);
+    const [loadingStories, setLoadingStories] = useState(false);
+    const [isReversing, setIsReversing] = useState(false);
 
     // =========================
-    // API: TẢI DANH SÁCH THỂ LOẠI (DÙNG CHUNG)
+    // API: TẢI DANH SÁCH THỂ LOẠI
     // =========================
     const fetchGenres = async () => {
         try {
@@ -57,6 +56,56 @@ export default function EditStory() {
     };
 
     // =========================
+    // API: LẤY DANH SÁCH TRUYỆN CỦA USER CHO AI SELECT
+    // =========================
+    const fetchUserStories = async () => {
+        try {
+            setLoadingStories(true);
+            const token = localStorage.getItem("token");
+            const res = await axios.get("https://api.baostory.fun/api/stories/list", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (res.data.success) {
+                setUserStories(res.data.data || []);
+            }
+        } catch (err) {
+            console.error("Lỗi lấy danh sách truyện:", err);
+        } finally {
+            setLoadingStories(false);
+        }
+    };
+
+    // =========================
+    // API: AI ĐẢO NGƯỢC Ý TƯỞNG
+    // =========================
+    const handleReverseDescription = async () => {
+        if (!selectedStory) {
+            toast.error("Vui lòng chọn tác phẩm.");
+            return;
+        }
+
+        try {
+            setIsReversing(true);
+            const token = localStorage.getItem("token");
+
+            const res = await axios.post(`https://api.baostory.fun/api/stories/${selectedStory}/reverse-description`, {}, { headers: { Authorization: `Bearer ${token}` } });
+
+            if (res.data.success) {
+                setStoryPlanning(res.data.data.reverseDescription);
+                toast.success("Đảo ngược ý tưởng thành công!");
+            } else {
+                toast.error(res.data.message || "Không thể đảo ngược ý tưởng.");
+            }
+        } catch (err) {
+            console.error("Lỗi gọi AI reverse:", err);
+            toast.error(err.response?.data?.message || "Không thể kết nối AI.");
+        } finally {
+            setIsReversing(false);
+        }
+    };
+
+    // =========================
     // API: TẢI DỮ LIỆU BAN ĐẦU
     // =========================
     useEffect(() => {
@@ -66,8 +115,7 @@ export default function EditStory() {
                 const token = localStorage.getItem("token");
                 const config = { headers: { Authorization: `Bearer ${token}` } };
 
-                // Gọi đồng thời danh mục thể loại gốc và chi tiết bộ truyện cần sửa
-                const [activeGenres, storyRes] = await Promise.all([fetchGenres(), axios.get(`http://localhost:4000/api/stories/${storyId}`, config)]);
+                const [activeGenres, storyRes] = await Promise.all([fetchGenres(), axios.get(`https://api.baostory.fun/api/stories/${storyId}`, config)]);
 
                 if (storyRes.data.success) {
                     const storyData = storyRes.data.data;
@@ -75,16 +123,12 @@ export default function EditStory() {
                     setSummary(storyData.description || "");
                     setCoverPreview(storyData.cover_image || null);
 
-                    // Trường hợp 1: Nếu backend trả về chuỗi tên thể loại "Mystery, Adventure" qua trường `genres`
                     if (storyData.genres && activeGenres.length > 0) {
                         const storyGenresNames = storyData.genres.split(", ");
                         const mapped = activeGenres.filter((g) => storyGenresNames.includes(g.name));
                         setSelectedGenres(mapped);
-                    }
-                    // Trường hợp 2: Phòng hờ nếu trả về chuỗi ID "1,2" qua trường `genreIds`
-                    else if (storyData.genreIds && activeGenres.length > 0) {
+                    } else if (storyData.genreIds && activeGenres.length > 0) {
                         const idArray = typeof storyData.genreIds === "string" ? storyData.genreIds.split(",").map(Number) : storyData.genreIds;
-
                         if (Array.isArray(idArray)) {
                             const mapped = activeGenres.filter((g) => idArray.includes(g.id));
                             setSelectedGenres(mapped);
@@ -101,26 +145,36 @@ export default function EditStory() {
         };
 
         if (storyId) fetchInitialData();
+        fetchUserStories();
     }, [storyId, navigate]);
 
-    // Copy ClipBoard
+    // Lắng nghe khi chọn truyện trong dropdown AI
+    useEffect(() => {
+        if (!selectedStory) {
+            setReverseIdea("");
+            return;
+        }
+
+        const story = userStories.find((item) => Number(item.id) === Number(selectedStory));
+        if (story) {
+            setReverseIdea(story.description || "");
+        }
+    }, [selectedStory, userStories]);
+
+    // Copy Clipboard
     const handleCopy = async (type, text) => {
-        if (!text) return;
+        if (!text?.trim()) return;
         try {
             await navigator.clipboard.writeText(text);
             setCopied(type);
             toast.success("Đã sao chép!");
-            setTimeout(() => {
-                setCopied("");
-            }, 1500);
+            setTimeout(() => setCopied(""), 1500);
         } catch {
             toast.error("Không thể sao chép.");
         }
     };
 
-    // =========================
-    // XỬ LÝ CHỌN THỂ LOẠI
-    // =========================
+    // Quản lý thể loại
     const toggleGenre = (genre) => {
         if (selectedGenres.some((g) => g.id === genre.id)) {
             setSelectedGenres(selectedGenres.filter((g) => g.id !== genre.id));
@@ -129,7 +183,6 @@ export default function EditStory() {
         }
     };
 
-    // Tạo thể loại mới
     const handleCreateGenre = async () => {
         if (!newGenre.trim()) {
             toast.error("Vui lòng nhập tên thể loại.");
@@ -147,18 +200,14 @@ export default function EditStory() {
                     setSelectedGenres((prev) => [...prev, createdGenre]);
                 }
                 setNewGenre("");
-                setShowCreateGenre(false);
                 toast.success("Tạo thể loại mới thành công!");
             }
         } catch (err) {
-            console.error("Lỗi tạo thể loại nhanh:", err);
+            console.error("Lỗi tạo thể loại:", err);
             toast.error(err.response?.data?.message || "Không thể tạo thể loại.");
         }
     };
 
-    // =========================
-    // API: XÓA MỀM THỂ LOẠI
-    // =========================
     const handleDeleteGenre = async (e, genre) => {
         e.stopPropagation();
 
@@ -167,22 +216,14 @@ export default function EditStory() {
 
         try {
             const token = localStorage.getItem("token");
-            if (!token) {
-                toast.error("Bạn cần đăng nhập để thực hiện chức năng này.");
-                return;
-            }
+            if (!token) return toast.error("Bạn cần đăng nhập để thực hiện chức năng này.");
 
             const res = await axios.delete(`https://api.baostory.fun/api/genres/${genre.id}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { Authorization: `Bearer ${token}` },
             });
 
             if (res.data.success) {
-                // Gỡ khỏi danh sách đang chọn ở giao diện nếu chọn trúng thể loại vừa xóa
                 setSelectedGenres((prev) => prev.filter((g) => g.id !== genre.id));
-
-                // Tải lại danh sách mới
                 await fetchGenres();
                 toast.success("Đã chuyển thể loại vào thùng rác!");
             }
@@ -192,9 +233,6 @@ export default function EditStory() {
         }
     };
 
-    // =========================
-    // XỬ LÝ THAY ẢNH BÌA
-    // =========================
     const handleCoverChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -203,9 +241,6 @@ export default function EditStory() {
         setCoverPreview(URL.createObjectURL(file));
     };
 
-    // =========================
-    // API: LƯU THAY ĐỔI DỮ LIỆU THẬT
-    // =========================
     const handleSave = async () => {
         if (!title.trim()) return toast.error("Vui lòng nhập tên truyện!");
         if (!summary.trim()) return toast.error("Vui lòng nhập mô tả!");
@@ -216,7 +251,6 @@ export default function EditStory() {
         try {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
-
             const formatGenreIds = selectedGenres.map((g) => (g.id ? Number(g.id) : Number(g)));
 
             const payload = {
@@ -251,13 +285,13 @@ export default function EditStory() {
 
     return (
         <div className="min-h-screen bg-[#0B1120] text-white relative overflow-hidden flex flex-col justify-between">
-            {/* BACKGROUND */}
+            {/* BACKGROUND DECORATION */}
             <div className="absolute top-20 left-20 w-96 h-96 bg-blue-600/10 blur-[120px] pointer-events-none" />
             <div className="absolute bottom-20 right-20 w-96 h-96 bg-violet-600/10 blur-[120px] pointer-events-none" />
 
             <section className="relative z-10 flex-1 flex items-center w-full max-w-7xl mx-auto px-6 py-4">
                 <div className="grid lg:grid-cols-2 gap-8 w-full items-stretch">
-                    {/* ================= LEFT CARD (FORM NHẬP LIỆU) ================= */}
+                    {/* LEFT CARD */}
                     <div className="flex flex-col justify-between max-h-[600px] rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-6">
                         {/* Header */}
                         <div className="flex items-center justify-between border-b border-white/5 pb-4">
@@ -266,22 +300,23 @@ export default function EditStory() {
                                 <h2 className="text-xl font-bold">Chỉnh sửa truyện</h2>
                             </div>
 
-                            <button onClick={() => window.history.back()} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10 transition">
-                                <ArrowLeft size={16} />
+                            <button onClick={() => window.history.back()} className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/5 px-3 py-1.5 text-xs text-slate-400 transition hover:bg-white/10 hover:text-white">
+                                <ArrowLeft size={14} />
                                 Quay lại
                             </button>
                         </div>
 
-                        {/* CONTENT */}
-                        <div className="mt-6 space-y-8">
+                        {/* Content */}
+                        <div className="mt-6 space-y-8 overflow-y-auto pr-1">
+                            {/* FORM */}
                             <div className="space-y-6">
-                                {/* TÊN TRUYỆN */}
+                                {/* Tên truyện */}
                                 <div className="flex items-center gap-4">
                                     <label className="w-24 shrink-0 text-sm font-medium text-slate-300">Tên truyện</label>
                                     <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nhập tên truyện" className="flex-1 h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-slate-500 outline-none focus:border-violet-500" />
                                 </div>
 
-                                {/* THỂ LOẠI */}
+                                {/* Thể loại */}
                                 <div className="flex items-center gap-4">
                                     <label className="w-24 shrink-0 text-sm font-medium text-slate-300">Thể loại</label>
                                     <button type="button" onClick={() => setShowGenreModal(true)} className="flex-1 min-h-12 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-slate-300 hover:bg-white/10 transition">
@@ -289,7 +324,7 @@ export default function EditStory() {
                                     </button>
                                 </div>
 
-                                {/* ẢNH BÌA */}
+                                {/* Ảnh bìa */}
                                 <div className="flex items-center gap-4">
                                     <label className="w-24 shrink-0 text-sm font-medium text-slate-300">Ảnh bìa</label>
                                     <div className="flex flex-1 items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
@@ -305,61 +340,59 @@ export default function EditStory() {
                             {/* AI REVERSE WORKSPACE */}
                             <div className="space-y-4">
                                 <div className="flex gap-3">
-                                    <select value={selectedStory} onChange={(e) => setSelectedStory(e.target.value)} className="flex-1 h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-white outline-none focus:border-violet-500">
-                                        <option value="">Chọn tác phẩm...</option>
-                                        {stories.map((story) => (
-                                            <option key={story.id} value={story.id} className="bg-slate-900">
-                                                {story.title}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <button type="button" className="h-12 whitespace-nowrap rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 font-semibold transition hover:scale-[1.02] active:scale-95">
-                                        Đảo ngược
+                                    <CustomSelect
+                                        className="flex-1"
+                                        value={selectedStory}
+                                        loading={loadingStories}
+                                        placeholder="Chọn tác phẩm..."
+                                        onChange={setSelectedStory}
+                                        options={userStories.map((story) => ({
+                                            value: story.id,
+                                            label: story.title,
+                                        }))}
+                                    />
+                                    <button type="button" onClick={handleReverseDescription} disabled={isReversing} className="h-12 whitespace-nowrap rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 font-semibold transition hover:scale-[1.02] active:scale-95 disabled:opacity-50">
+                                        {isReversing ? <Loader2 className="animate-spin" size={18} /> : "Đảo ngược"}
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="relative">
                                         <button type="button" onClick={() => handleCopy("original", reverseIdea)} className="absolute top-3 right-3 z-10 flex items-center justify-center w-9 h-9 rounded-lg border border-white/10 bg-black/40 text-slate-400 hover:bg-violet-600 hover:text-white transition-all">
-                                            {copied === "original" ? <CopyCheck size={18} /> : <Copy size={18} />}
+                                            {copied === "original" ? <Check size={18} /> : <Copy size={18} />}
                                         </button>
-                                        <textarea readOnly value={reverseIdea} placeholder="Ý tưởng gốc..." className="h-40 w-full pr-24 custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4" />
+                                        <textarea readOnly value={reverseIdea} placeholder="Ý tưởng gốc..." className="h-40 w-full pr-12 custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm" />
                                     </div>
 
                                     <div className="relative">
                                         <button type="button" onClick={() => handleCopy("reverse", storyPlanning)} className="absolute top-3 right-3 z-10 flex items-center justify-center w-9 h-9 rounded-lg border border-white/10 bg-black/40 text-slate-400 hover:bg-violet-600 hover:text-white transition-all">
-                                            {copied === "reverse" ? <CopyCheck size={18} /> : <Copy size={18} />}
+                                            {copied === "reverse" ? <Check size={18} /> : <Copy size={18} />}
                                         </button>
-                                        <textarea readOnly value={storyPlanning} placeholder="Ý tưởng đảo ngược..." className="h-40 w-full pr-24 custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4" />
+                                        <textarea readOnly value={storyPlanning} placeholder="Ý tưởng đảo ngược..." className="h-40 w-full pr-12 custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm" />
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* ================= RIGHT CARD (LIVE PREVIEW) ================= */}
+                    {/* RIGHT CARD */}
                     <div className="flex max-h-[600px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl">
-                        {/* Header */}
                         <div className="border-b border-white/10 px-6 py-5">
                             <div className="flex items-center gap-3">
                                 <Lightbulb className="text-yellow-400" size={20} />
-                                <h2 className="text-lg font-bold">Thông tin tác phẩm</h2>
+                                <h2 className="text-lg font-bold">Xem trước tác phẩm</h2>
                             </div>
                         </div>
 
-                        {/* Live Preview Display */}
-                        <div className="flex flex-1 flex-col gap-6 p-6">
+                        <div className="flex flex-1 flex-col gap-6 p-6 overflow-y-auto">
                             <div className="flex gap-5">
-                                {/* Cover Preview */}
                                 <div className="flex aspect-[3/4] w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">{coverPreview ? <img src={coverPreview} alt="Cover" className="h-full w-full object-cover" /> : <span className="text-xs text-slate-500">Chưa có ảnh</span>}</div>
-
-                                {/* Title & Tags Info */}
                                 <div className="flex-1">
-                                    <h2 className="text-2xl font-bold break-words">{title || "Tên truyện"}</h2>
+                                    <h2 className="text-2xl font-bold truncate max-w-[280px]">{title || "Tên truyện"}</h2>
                                     <div className="mt-3 flex flex-wrap gap-2">
                                         {selectedGenres.length ? (
                                             selectedGenres.map((genre) => (
-                                                <span key={genre.id} className="rounded-full bg-violet-500/20 px-3 py-1 text-xs text-violet-300">
-                                                    {genre.name}
+                                                <span key={genre.id || genre} className="rounded-full bg-violet-500/20 px-3 py-1 text-xs text-violet-300">
+                                                    {genre.name || genre}
                                                 </span>
                                             ))
                                         ) : (
@@ -369,14 +402,12 @@ export default function EditStory() {
                                 </div>
                             </div>
 
-                            {/* Description Editor */}
-                            <div className="flex flex-col flex-1">
+                            <div className="flex flex-col">
                                 <h3 className="mb-3 font-semibold">Mô tả truyện</h3>
-                                <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Viết mô tả truyện..." className="flex-1 min-h-[220px] resize-none rounded-2xl border border-white/10 bg-black/20 p-4 text-white placeholder:text-slate-500 outline-none focus:border-violet-500" />
+                                <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Viết mô tả..." className="h-44 w-full custom-scroll resize-none rounded-2xl border border-white/10 bg-black/20 p-4 text-white placeholder:text-slate-500 outline-none focus:border-violet-500" />
                             </div>
 
-                            {/* Action Button */}
-                            <button onClick={handleSave} disabled={isSaving} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 font-semibold transition hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60">
+                            <button onClick={handleSave} disabled={isSaving} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 font-semibold transition hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 mt-auto">
                                 {isSaving ? (
                                     <>
                                         <Loader2 size={18} className="animate-spin" />
@@ -394,13 +425,12 @@ export default function EditStory() {
                 </div>
             </section>
 
-            {/* ================= GENRE MANAGEMENT MODAL ================= */}
+            {/* GENRE MODAL */}
             {showGenreModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
                     <div className="w-[440px] rounded-2xl border border-white/10 bg-[#111827] p-6 shadow-2xl">
                         <h3 className="mb-4 text-center text-lg font-bold">Chọn thể loại truyện</h3>
 
-                        {/* Quick Add Genre */}
                         <div className="mb-4">
                             <div className="flex gap-2">
                                 <input type="text" value={newGenre} onChange={(e) => setNewGenre(e.target.value)} placeholder="Nhập tên thể loại..." className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 outline-none focus:border-violet-500 text-white" />
@@ -410,7 +440,6 @@ export default function EditStory() {
                             </div>
                         </div>
 
-                        {/* List Selector Box */}
                         <div className="grid max-h-[280px] grid-cols-2 gap-2.5 overflow-y-auto pr-1 custom-scroll">
                             {genres.map((genre) => {
                                 const isSelected = selectedGenres.some((g) => g.id === genre.id);
@@ -418,7 +447,6 @@ export default function EditStory() {
                                     <div key={genre.id} onClick={() => toggleGenre(genre)} className={`group relative flex items-center justify-between p-2.5 text-sm rounded-xl border cursor-pointer transition-all ${isSelected ? "bg-violet-500/20 border-violet-500 text-violet-300 font-medium" : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10"}`}>
                                         <span className="truncate pr-8 select-none">{genre.name}</span>
 
-                                        {/* NÚT XÓA THỂ LOẠI (HIỆN KHI HOVER) */}
                                         <button type="button" onClick={(e) => handleDeleteGenre(e, genre)} className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-lg bg-red-500/20 hover:bg-red-600 text-red-300 hover:text-white transition-all opacity-0 group-hover:opacity-100 pointer-events-auto" title={`Xóa thể loại ${genre.name}`}>
                                             <X size={13} />
                                         </button>
@@ -427,7 +455,6 @@ export default function EditStory() {
                             })}
                         </div>
 
-                        {/* Modal Footer Controls */}
                         <div className="mt-6 flex justify-end gap-2 border-t border-white/5 pt-4">
                             <button onClick={() => setShowGenreModal(false)} className="rounded-xl bg-white/5 px-4 py-2 text-sm hover:bg-white/10">
                                 Hủy
