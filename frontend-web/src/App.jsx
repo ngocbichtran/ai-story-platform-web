@@ -36,7 +36,7 @@ import EditCharacterPage from "./features/stories/pages/characters/EditCharacter
 import PlotList from "./features/stories/pages/plots/PlotList";
 
 // Plans
-import ChapterSceneManager from "./features/stories/pages/plans/PlanDetail";
+import ChapterPlanEditor from "./features/stories/pages/plans/ChapterPlanEditor";
 
 function App() {
     return (
@@ -84,7 +84,7 @@ function App() {
                 <Route path="/stories/:storyId/editor/characters/edit/:characterId" element={<EditCharacterPage />} />
 
                 {/* Plans */}
-                <Route path="/stories/:storyId/editor/plan" element={<ChapterSceneManager />} />
+                <Route path="/stories/:storyId/editor/plan" element={<ChapterPlanEditor />} />
 
                 {/* Chapters */}
                 {/* ROUTE CHỈNH SỬA CHƯƠNG (Trang soạn thảo Full Screen) */}

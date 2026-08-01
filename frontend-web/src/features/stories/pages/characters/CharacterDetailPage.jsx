@@ -1,6 +1,8 @@
-import React, { useState } from "react";
-import { ArrowLeft, Pencil, User, BadgeInfo, Eye, BookOpen, Target, Users, Trash2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { ArrowLeft, Pencil, User, BadgeInfo, Eye, BookOpen, Target, Users, Loader2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
+import toast from "react-hot-toast";
 
 export default function CharacterDetailPage() {
     const navigate = useNavigate();
@@ -8,45 +10,65 @@ export default function CharacterDetailPage() {
     const [infoTab, setInfoTab] = useState("figured");
 
     // =====================================
-    // MOCK DATA
+    // STATES CHO DỮ LIỆU API
     // =====================================
-    const [character, setCharacter] = useState({
-        id: characterId,
-        name: "Alex Thorne",
-        gender: "Nam",
-        age: 34,
-        occupation: "Thanh tra",
-        role: "Nhân vật chính",
-        appearance: "Dáng người cao khoảng 1m82, mái tóc đen được cắt gọn gàng, ánh mắt sắc bén cùng vết sẹo nhỏ trên chân mày trái. Thường mặc áo khoác dài màu đen và găng tay da.",
-        personality: "Điềm tĩnh, quyết đoán, thông minh và luôn giữ bình tĩnh trong mọi tình huống. Có khả năng quan sát rất tốt và luôn đặt lợi ích của người khác lên trước bản thân.",
-        background: "Sinh ra trong gia đình truyền thống làm cảnh sát.Sau biến cố em gái mất tích, Alex quyết định trở thành thanh tra hình sự để điều tra sự thật.Anh dành gần như toàn bộ cuộc đời mình cho công việc và luôn theo đuổi công lý.",
-        goal: "Khám phá bí mật phía sau tổ chức ngầm Black Raven và tìm lại em gái đã mất tích suốt nhiều năm.",
-        relationship: [
-            { id: 2, name: "Elena Vance", relationType: "Đồng minh" },
-            { id: 3, name: "Victor Malum", relationType: "Kẻ thù" },
-            { id: 4, name: "Thomas Thorne", relationType: "Cha" },
-            { id: 5, name: "Luna", relationType: "Đồng đội" },
-        ],
-    });
+    const [character, setCharacter] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    // Hàm xử lý xóa mối quan hệ (Ví dụ bổ sung cho đầy đủ logic giao diện)
-    const handleDeleteRelationship = (id) => {
-        if (!window.confirm("Bạn có chắc muốn xóa mối quan hệ này?")) return;
-        setCharacter((prev) => ({
-            ...prev,
-            relationship: prev.relationship.filter((item) => item.id !== id),
-        }));
-    };
+    useEffect(() => {
+        const fetchCharacterDetail = async () => {
+            try {
+                setLoading(true);
+                const token = localStorage.getItem("token");
+                const config = { headers: { Authorization: `Bearer ${token}` } };
+
+                // Gọi API lấy thông tin chi tiết nhân vật theo characterId (Đặc tả 017_F1)
+                const res = await axios.get(`http://localhost:4000/api/characters/${characterId}`, config);
+                if (res.data.success) {
+                    setCharacter(res.data.data);
+                }
+            } catch (err) {
+                console.error("Lỗi tải chi tiết nhân vật:", err);
+                toast.error("Không thể tải thông tin chi tiết nhân vật.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (characterId) {
+            fetchCharacterDetail();
+        }
+    }, [characterId]);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-[#070b14] text-slate-400 gap-2">
+                <Loader2 size={28} className="animate-spin text-blue-500" />
+                <span>Đang tải thông tin nhân vật...</span>
+            </div>
+        );
+    }
+
+    if (!character) {
+        return (
+            <div className="flex flex-col items-center justify-center h-screen bg-[#070b14] text-slate-400 gap-4">
+                <p>Không tìm thấy dữ liệu nhân vật.</p>
+                <button onClick={() => navigate(-1)} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold">
+                    Quay lại
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="relative min-h-screen flex flex-col overflow-hidden bg-[#070b14] text-white">
-            {/* Background */}
+            {/* Background Glows */}
             <div className="absolute left-1/4 top-10 h-96 w-96 rounded-full bg-blue-600/10 blur-[150px] pointer-events-none" />
             <div className="absolute bottom-10 right-1/4 h-96 w-96 rounded-full bg-violet-600/10 blur-[150px] pointer-events-none" />
 
             <main className="relative z-10 mx-auto max-w-7xl pt-2 flex-1 flex flex-col gap-4 w-full pb-6">
                 {/* ==========================================
-                    HEADER
+                    HEADER (Đồng bộ tuyệt đối với Form)
                 ========================================== */}
                 <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-xl shrink-0">
                     <div className="absolute -right-20 -top-20 h-28 w-28 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
@@ -70,9 +92,9 @@ export default function CharacterDetailPage() {
 
                         <div className="hidden md:block md:col-span-5" />
 
-                        {/* EDIT */}
+                        {/* EDIT BUTTON */}
                         <div className="col-span-12 md:col-span-2">
-                            <button onClick={() => navigate(`/stories/${storyId}/editor/characters/edit/${characterId}`)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-2.5 text-xs font-bold text-white transition hover:opacity-90 active:scale-95">
+                            <button onClick={() => navigate(`/stories/${storyId}/editor/characters/edit/${characterId}`)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-2.5 text-xs font-bold text-white transition hover:opacity-90 active:scale-95 shadow-lg shadow-blue-500/10">
                                 <Pencil size={15} /> Chỉnh sửa
                             </button>
                         </div>
@@ -80,63 +102,69 @@ export default function CharacterDetailPage() {
                 </section>
 
                 {/* ==========================================
-                    CONTENT
+                    CONTENT LAYOUT (Đồng bộ Tab & 3 Khung Card)
                 ========================================== */}
                 <section className="w-full flex-1 flex flex-col min-h-0">
                     <div className="flex-1 flex flex-col rounded-2xl border border-white/10 bg-slate-900/30 backdrop-blur-xl shadow-xl overflow-hidden">
+                        {/* SUB TABS */}
                         <div className="border-b border-white/10 p-2 shrink-0">
-                            <div className="flex w-fit rounded-xl border border-white/10 bg-slate-950/40 p-1">
-                                <button onClick={() => setInfoTab("figured")} className={`rounded-lg px-5 py-2 text-sm font-semibold transition-all duration-200 ${infoTab === "figured" ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>
-                                    Hình tượng nhân vật
-                                </button>
-                                <button onClick={() => setInfoTab("storyline")} className={`rounded-lg px-5 py-2 text-sm font-semibold transition-all duration-200 ${infoTab === "storyline" ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>
-                                    Tuyến nhân vật
-                                </button>
+                            <div className="flex items-center justify-between">
+                                <div className="flex rounded-xl border border-white/10 bg-slate-950/40 p-1">
+                                    <button onClick={() => setInfoTab("figured")} className={`rounded-lg px-5 py-2 text-sm font-semibold transition-all duration-200 ${infoTab === "figured" ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>
+                                        Hình tượng nhân vật
+                                    </button>
+                                    <button onClick={() => setInfoTab("storyline")} className={`rounded-lg px-5 py-2 text-sm font-semibold transition-all duration-200 ${infoTab === "storyline" ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>
+                                        Tuyến nhân vật
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Vùng cuộn thông tin động lấp đầy màn hình */}
+                        {/* VÙNG HIỂN THỊ NỘI DUNG CHI TIẾT */}
                         <div className="flex-1 overflow-y-auto p-5 custom-scrollbar min-h-0">
                             {/* TAB 1: HÌNH TƯỢNG NHÂN VẬT */}
                             {infoTab === "figured" && (
                                 <div className="grid gap-5 lg:grid-cols-12 w-full">
                                     {/* THÔNG TIN CƠ BẢN */}
-                                    <section className="lg:col-span-4 rounded-2xl border border-blue-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col">
-                                        <div className="mb-4 flex items-center gap-3 border-b border-white/10 pb-3 shrink-0">
+                                    <section className="lg:col-span-4 rounded-2xl border border-blue-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col gap-4">
+                                        <div className="flex items-center gap-3 border-b border-white/10 pb-3 shrink-0">
                                             <User size={18} className="text-blue-400" />
                                             <h2 className="font-bold text-white">Thông tin</h2>
                                         </div>
-                                        <div className="space-y-4 text-sm flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                                        <div className="space-y-3.5 text-sm flex-1 overflow-y-auto pr-1 custom-scrollbar">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs uppercase tracking-wider text-slate-400">Vai trò</span>
-                                                <span className="font-semibold text-white">{character.role}</span>
+                                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tên</span>
+                                                <span className="font-semibold text-white">{character.name || "Chưa cập nhật"}</span>
                                             </div>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs uppercase tracking-wider text-slate-400">Tên</span>
-                                                <span className="font-semibold text-white">{character.name}</span>
+                                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Vai trò</span>
+                                                <span className="font-semibold text-white">{character.role || "Chưa cập nhật"}</span>
                                             </div>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs uppercase tracking-wider text-slate-400">Giới tính</span>
-                                                <span className="font-semibold text-white">{character.gender}</span>
+                                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Giới tính</span>
+                                                <span className="font-semibold text-white">{character.gender || "Chưa cập nhật"}</span>
                                             </div>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs uppercase tracking-wider text-slate-400">Tuổi</span>
-                                                <span className="font-semibold text-white">{character.age}</span>
+                                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tuổi</span>
+                                                <span className="font-semibold text-white">{character.age || "Chưa cập nhật"}</span>
                                             </div>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs uppercase tracking-wider text-slate-400">Nghề nghiệp</span>
-                                                <span className="font-semibold text-white">{character.occupation}</span>
+                                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Nghề nghiệp</span>
+                                                <span className="font-semibold text-white">{character.occupation || "Chưa cập nhật"}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Trạng thái</span>
+                                                <span className={`font-semibold px-2.5 py-0.5 rounded-full text-xs border ${character.status === "dead" ? "bg-red-500/15 text-red-400 border-red-500/30" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"}`}>{character.status === "dead" ? "Đã chết" : "Còn sống"}</span>
                                             </div>
                                         </div>
                                     </section>
-
                                     {/* NGOẠI HÌNH */}
                                     <section className="lg:col-span-4 rounded-2xl border border-violet-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[415px]">
                                         <div className="mb-4 flex items-center gap-3 border-b border-white/10 pb-3 shrink-0">
                                             <Eye size={18} className="text-violet-400" />
                                             <h2 className="font-bold text-violet-300">Ngoại hình</h2>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0 text-sm leading-7 text-slate-300 whitespace-pre-line">{character.appearance}</div>
+                                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0 text-sm leading-7 text-slate-300 whitespace-pre-line">{character.appearance || "Chưa có mô tả ngoại hình."}</div>
                                     </section>
 
                                     {/* TÍNH CÁCH */}
@@ -145,7 +173,7 @@ export default function CharacterDetailPage() {
                                             <BadgeInfo size={18} className="text-emerald-400" />
                                             <h2 className="font-bold text-emerald-300">Tính cách</h2>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0 text-sm leading-7 text-slate-300 whitespace-pre-line">{character.personality}</div>
+                                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0 text-sm leading-7 text-slate-300 whitespace-pre-line">{character.personality || "Chưa có mô tả tính cách."}</div>
                                     </section>
                                 </div>
                             )}
@@ -161,10 +189,10 @@ export default function CharacterDetailPage() {
                                             </div>
                                             <div>
                                                 <h2 className="font-bold text-yellow-300">Mục tiêu</h2>
-                                                <p className="text-xs text-slate-400">Động lực và mục đích của nhân vật.</p>
+                                                <p className="text-xs text-slate-400">Động lực cốt lõi.</p>
                                             </div>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0 text-sm leading-8 text-slate-300 whitespace-pre-line">{character.goal}</div>
+                                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0 text-sm leading-8 text-slate-300 whitespace-pre-line">{character.goal || "Chưa cập nhật mục tiêu."}</div>
                                     </section>
 
                                     {/* TIỂU SỬ */}
@@ -175,10 +203,10 @@ export default function CharacterDetailPage() {
                                             </div>
                                             <div>
                                                 <h2 className="font-bold text-cyan-300">Tiểu sử</h2>
-                                                <p className="text-xs text-slate-400">Quá khứ và hành trình của nhân vật.</p>
+                                                <p className="text-xs text-slate-400">Quá khứ, nguồn gốc xuất thân.</p>
                                             </div>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0 text-sm leading-8 text-slate-300 whitespace-pre-line">{character.background}</div>
+                                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0 text-sm leading-8 text-slate-300 whitespace-pre-line">{character.background || "Chưa có tiểu sử chi tiết."}</div>
                                     </section>
 
                                     {/* MỐI QUAN HỆ */}
@@ -189,11 +217,12 @@ export default function CharacterDetailPage() {
                                             </div>
                                             <div>
                                                 <h2 className="font-bold text-blue-300">Mối quan hệ</h2>
-                                                <p className="text-xs text-slate-400">Các nhân vật có liên quan đến {character.name}.</p>
+                                                <p className="text-xs text-slate-400">Các nhân vật liên quan.</p>
                                             </div>
                                         </div>
+
                                         <div className="flex-1 overflow-y-auto px-5 pb-5 custom-scrollbar min-h-0">
-                                            {character.relationship.length === 0 ? (
+                                            {!character.relationship || character.relationship.length === 0 ? (
                                                 <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-white/10 text-sm text-slate-500 italic py-12">Chưa có mối quan hệ nào.</div>
                                             ) : (
                                                 <div className="flex flex-col gap-2.5 w-full">
@@ -207,7 +236,7 @@ export default function CharacterDetailPage() {
                                                             </div>
                                                             <div className="flex items-center gap-2 shrink-0">
                                                                 <button onClick={() => navigate(`/stories/${storyId}/editor/characters/${item.id}`)} className="flex items-center gap-1.5 rounded-xl border border-blue-500/20 bg-blue-500/10 px-3.5 py-1.5 text-xs font-medium text-blue-300 transition hover:bg-blue-500/20">
-                                                                    Thông tin nhân vật
+                                                                    Chi tiết
                                                                 </button>
                                                             </div>
                                                         </div>

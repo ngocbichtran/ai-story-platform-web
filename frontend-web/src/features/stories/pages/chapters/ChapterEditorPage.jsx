@@ -278,7 +278,7 @@ export default function ChapterEditorPage() {
 
     if (loading) {
         return (
-            <section className="h-full flex items-center justify-center bg-[#0B1329]">
+            <section className="h-screen flex items-center justify-center bg-[#0B1329]">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 size={40} className="animate-spin text-blue-400" />
                     <span className="text-slate-400 text-sm">Đang tải không gian viết...</span>
