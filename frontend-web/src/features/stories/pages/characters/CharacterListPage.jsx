@@ -4,8 +4,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 
-const API_BASE_URL = "http://localhost:4000/api/characters";
-
 export default function CharacterListPage() {
     const navigate = useNavigate();
     const { storyId } = useParams();
@@ -20,7 +18,7 @@ export default function CharacterListPage() {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            let url = `${API_BASE_URL}/${storyId}/list`;
+            let url = `https://api.baostory.fun/api/characters/${storyId}/list`;
             if (roleFilter !== "all") {
                 url += `?role=${encodeURIComponent(roleFilter)}`;
             }
@@ -51,7 +49,7 @@ export default function CharacterListPage() {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const res = await axios.delete(`${API_BASE_URL}/${characterId}`, config);
+            const res = await axios.delete(`https://api.baostory.fun/api/characters/${characterId}`, config);
             if (res.data.success) {
                 setCharacters((prev) => prev.filter((char) => char.id !== characterId));
                 toast.success(`Đã xóa nhân vật "${name}" thành công.`);

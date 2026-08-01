@@ -28,12 +28,11 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
     const [chapterNumberInput, setChapterNumberInput] = useState("");
 
     // =========================================================================
-    // 🟢 3. TỰ ĐỘNG ĐỒNG BỘ TAB ACTIVE THEO URL THỰC TẾ
+    // 3. TỰ ĐỘNG ĐỒNG BỘ TAB ACTIVE THEO URL THỰC TẾ
     // =========================================================================
     useEffect(() => {
         const currentPath = location.pathname;
 
-        // Nếu đường dẫn chứa chữ chapter (Ví dụ: /stories/28/editor/chapter/1)
         if (currentPath.includes("/editor/chapter/")) {
             const match = currentPath.match(/\/editor\/chapter\/(\d+)/);
             if (match && match[1]) {

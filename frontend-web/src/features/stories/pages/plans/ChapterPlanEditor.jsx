@@ -39,7 +39,7 @@ export default function ChapterPlanEditor() {
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
             // Gọi API lấy danh sách kế hoạch chương từ collection chapter_plans
-            const res = await axios.get(`http://localhost:4000/api/chapterPlan/stories/${storyId}`, config);
+            const res = await axios.get(`https://api.baostory.fun/api/chapterPlan/stories/${storyId}`, config);
 
             if (res.data.success) {
                 const planList = res.data.data || [];
@@ -71,7 +71,7 @@ export default function ChapterPlanEditor() {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const res = await axios.get(`http://localhost:4000/api/scenes/${selectedPlanId}`, config);
+            const res = await axios.get(`https://api.baostory.fun/api/scenes/${selectedPlanId}`, config);
             if (res.data.success) {
                 setScenes(res.data.data || []);
             }
@@ -127,7 +127,7 @@ export default function ChapterPlanEditor() {
                 },
             };
 
-            const res = await axios.post(`http://localhost:4000/api/chapterPlan`, payload, config);
+            const res = await axios.post(`https://api.baostory.fun/api/chapterPlan`, payload, config);
             if (res.data.success) {
                 toast.success("Thêm kế hoạch chương thành công!");
                 await fetchPlans();
@@ -160,9 +160,9 @@ export default function ChapterPlanEditor() {
 
             let res;
             if (currentPlan && currentPlan._id) {
-                res = await axios.put(`http://localhost:4000/api/chapterPlan/${currentPlan._id}`, payload, config);
+                res = await axios.put(`https://api.baostory.fun/api/chapterPlan/${currentPlan._id}`, payload, config);
             } else {
-                res = await axios.post(`http://localhost:4000/api/chapterPlan`, payload, config);
+                res = await axios.post(`https://api.baostory.fun/api/chapterPlan`, payload, config);
             }
 
             if (res.data.success) {
@@ -184,7 +184,7 @@ export default function ChapterPlanEditor() {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const res = await axios.delete(`http://localhost:4000/api/chapterPlan/${id}`, config);
+            const res = await axios.delete(`https://api.baostory.fun/api/chapterPlan/${id}`, config);
             if (res.data.success) {
                 toast.success("Xóa kế hoạch chương thành công!");
                 fetchPlans();
@@ -240,7 +240,7 @@ export default function ChapterPlanEditor() {
                 };
 
                 // Gọi API tạo mới phân cảnh dựa theo chapterId (selectedPlanId)
-                const res = await axios.post(`http://localhost:4000/api/scenes/${selectedPlanId}`, payload, config);
+                const res = await axios.post(`https://api.baostory.fun/api/scenes/${selectedPlanId}`, payload, config);
 
                 if (res.data.success) {
                     toast.success("Thêm phân cảnh thành công!");
@@ -259,7 +259,7 @@ export default function ChapterPlanEditor() {
                 };
 
                 // Gọi API cập nhật phân cảnh theo sceneId
-                const res = await axios.put(`http://localhost:4000/api/scenes/${selectedScene._id}`, payload, config);
+                const res = await axios.put(`https://api.baostory.fun/api/scenes/${selectedScene._id}`, payload, config);
 
                 if (res.data.success) {
                     toast.success("Cập nhật phân cảnh thành công!");
@@ -280,7 +280,7 @@ export default function ChapterPlanEditor() {
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
             // 🟢 Đồng bộ theo đặc tả 037_F1: Gọi DELETE theo sceneId
-            const res = await axios.delete(`http://localhost:4000/api/scenes/${id}`, config);
+            const res = await axios.delete(`https://api.baostory.fun/api/scenes/${id}`, config);
 
             if (res.data.success) {
                 toast.success("Xóa phân cảnh thành công!");

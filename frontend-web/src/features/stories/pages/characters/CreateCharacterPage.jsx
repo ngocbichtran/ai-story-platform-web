@@ -5,8 +5,6 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import CharacterAppearanceStudio from "../../components/CharacterAppearanceStudio";
 
-const API_BASE_URL = "http://localhost:4000/api/characters";
-
 export default function CreateCharacterPage() {
     const navigate = useNavigate();
     const { storyId } = useParams();
@@ -45,7 +43,7 @@ export default function CreateCharacterPage() {
             try {
                 const token = localStorage.getItem("token");
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-                const res = await axios.get(`${API_BASE_URL}/${storyId}/list`, config);
+                const res = await axios.get(`https://api.baostory.fun/api/characters/${storyId}/list`, config);
                 if (res.data.success) {
                     setAllCharacters(res.data.data || []);
                 }
@@ -141,7 +139,7 @@ export default function CreateCharacterPage() {
                 relationship: formData.relationship,
             };
 
-            await axios.post(API_BASE_URL, payload, config);
+            await axios.post("https://api.baostory.fun/api/characters", payload, config);
             toast.success("Khởi tạo nhân vật mới thành công!");
             navigate(`/stories/${storyId}/editor/characters`);
         } catch (err) {

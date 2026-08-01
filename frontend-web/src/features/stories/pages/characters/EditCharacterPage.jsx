@@ -44,7 +44,7 @@ export default function EditCharacterPage() {
             try {
                 const token = localStorage.getItem("token");
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-                const res = await axios.get(`http://localhost:4000/api/characters/${storyId}/list`, config);
+                const res = await axios.get(`https://api.baostory.fun/api/characters/${storyId}/list`, config);
                 if (res.data.success) {
                     const list = (res.data.data || []).filter((c) => c.id !== characterId);
                     setAllCharacters(list);
@@ -64,7 +64,7 @@ export default function EditCharacterPage() {
                 setFetchingData(true);
                 const token = localStorage.getItem("token");
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-                const res = await axios.get(`http://localhost:4000/api/characters/${characterId}`, config);
+                const res = await axios.get(`https://api.baostory.fun/api/characters/${characterId}`, config);
                 if (res.data.success) {
                     const char = res.data.data;
                     setFormData({
@@ -178,7 +178,7 @@ export default function EditCharacterPage() {
                 relationship: formData.relationship,
             };
 
-            await axios.put(`http://localhost:4000/api/characters/${characterId}`, payload, config);
+            await axios.put(`https://api.baostory.fun/api/characters/${characterId}`, payload, config);
             toast.success("Cập nhật nhân vật thành công!");
             navigate(`/stories/${storyId}/editor/characters/${characterId}`);
         } catch (err) {

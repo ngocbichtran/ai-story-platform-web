@@ -27,7 +27,7 @@ export default function RightSidebar({ isOpen, setIsOpen }) {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const res = await axios.get(`http://localhost:4000/api/characters/${storyId}/list`, config);
+            const res = await axios.get(`https://api.baostory.fun/api/characters/${storyId}/list`, config);
             if (res.data.success) {
                 setCharacters(res.data.data || []);
             }
@@ -49,7 +49,7 @@ export default function RightSidebar({ isOpen, setIsOpen }) {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const res = await axios.get(`http://localhost:4000/api/world/list/${storyId}`, config);
+            const res = await axios.get(`https://api.baostory.fun/api/world/list/${storyId}`, config);
             if (res.data.success) {
                 setWorlds(res.data.data || []);
             }
