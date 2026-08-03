@@ -105,7 +105,7 @@ const LoginPage = () => {
                             <p className="text-xs sm:text-sm text-purple-200/60 mt-3 mb-10 tracking-wide">Chào mừng bạn đến với BaoStory!</p>
                         </div>
 
-                        {/* 🟢 CUSTOM GOOGLE BUTTON (Kích hoạt trực tiếp qua hook `loginWithGoogle()`) */}
+                        {/* CUSTOM GOOGLE BUTTON (Kích hoạt trực tiếp qua hook `loginWithGoogle()`) */}
                         <div className="relative z-10 w-full mx-auto">
                             <div className="absolute -inset-px bg-gradient-to-r from-indigo-500/0 via-purple-400/40 to-fuchsia-500/0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 

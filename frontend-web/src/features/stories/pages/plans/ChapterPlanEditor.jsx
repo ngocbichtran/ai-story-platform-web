@@ -229,7 +229,7 @@ export default function ChapterPlanEditor() {
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
             if (selectedScene?._id === "new") {
-                // 🟢 Đồng bộ theo đặc tả 033_F1: Gửi sceneData lên
+                // Đồng bộ theo đặc tả 033_F1: Gửi sceneData lên
                 const payload = {
                     sceneData: {
                         sceneOrder: Number(sceneForm.sceneOrder),
@@ -248,7 +248,7 @@ export default function ChapterPlanEditor() {
                     setIsEditingScene(false);
                 }
             } else {
-                // 🟢 Đồng bộ theo đặc tả 035_F1: Gửi updateData lên
+                // Đồng bộ theo đặc tả 035_F1: Gửi updateData lên
                 const payload = {
                     updateData: {
                         sceneOrder: Number(sceneForm.sceneOrder),
@@ -279,7 +279,7 @@ export default function ChapterPlanEditor() {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            // 🟢 Đồng bộ theo đặc tả 037_F1: Gọi DELETE theo sceneId
+            // Đồng bộ theo đặc tả 037_F1: Gọi DELETE theo sceneId
             const res = await axios.delete(`https://api.baostory.fun/api/scenes/${id}`, config);
 
             if (res.data.success) {

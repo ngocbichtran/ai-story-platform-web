@@ -82,9 +82,7 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
             <div className="absolute bottom-10 right-1/4 h-[500px] w-[500px] rounded-full bg-emerald-600/5 blur-[180px] pointer-events-none" />
 
             <div className="relative z-10 mx-auto max-w-7xl w-full flex-1 flex flex-col gap-6 p-6 min-h-screen">
-                {/* =========================
-                    HEADER
-                ========================= */}
+                {/* HEADER */}
 
                 <section className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 rounded-2xl border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl">
                     {/* Character Select */}
@@ -125,14 +123,10 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
                     </div>
                 </section>
 
-                {/* =========================
-                    WORKSPACE
-                ========================= */}
+                {/* WORKSPACE */}
 
                 <section className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[500px]">
-                    {/* =========================
-    CỘT 1 : NHÂN VẬT GỐC
-========================= */}
+                    {/* CỘT 1 : NHÂN VẬT GỐC */}
                     <div className="rounded-2xl border border-white/10 bg-slate-900/20 p-5 flex flex-col shadow-lg">
                         {/* HEADER */}
                         <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4 shrink-0">
@@ -146,18 +140,14 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
 
                         {/* BODY */}
                         <div className="flex-1 flex flex-col gap-5 min-h-0">
-                            {/* =========================
-            NGOẠI HÌNH
-        ========================= */}
+                            {/* NGOẠI HÌNH */}
                             <div className="flex-1 flex flex-col min-h-0">
                                 <label className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Ngoại hình</label>
 
                                 <textarea name="appearance" value={formData.appearance} readOnly placeholder="Chọn nhân vật để hiển thị ngoại hình..." className="flex-1 w-full rounded-xl border border-white/5 bg-slate-950/40 p-4 text-sm leading-7 text-slate-300 resize-none custom-scrollbar cursor-not-allowed focus:outline-none placeholder-slate-600" />
                             </div>
 
-                            {/* =========================
-            TÍNH CÁCH
-        ========================= */}
+                            {/* TÍNH CÁCH */}
                             <div className="flex-1 flex flex-col min-h-0">
                                 <label className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Tính cách</label>
 
@@ -165,9 +155,7 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
                             </div>
                         </div>
                     </div>
-                    {/* =========================
-    CỘT 2 : AI ĐẢO NGƯỢC
-========================= */}
+                    {/* CỘT 2 : AI ĐẢO NGƯỢC */}
                     <div className="rounded-2xl border border-violet-500/20 bg-violet-500/[0.02] p-5 flex flex-col shadow-lg">
                         {/* HEADER */}
                         <div className="flex items-center justify-between border-b border-violet-500/10 pb-3 mb-4 shrink-0">
@@ -181,9 +169,7 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
 
                         {/* BODY */}
                         <div className="flex-1 flex flex-col gap-5 min-h-0">
-                            {/* =========================
-            NGOẠI HÌNH ĐẢO NGƯỢC
-        ========================= */}
+                            {/* NGOẠI HÌNH ĐẢO NGƯỢC */}
                             <div className="flex-1 flex flex-col min-h-0">
                                 <div className="flex items-center justify-between mb-2">
                                     <label className="text-xs font-bold uppercase tracking-wider text-violet-300">Ngoại hình đảo ngược</label>
@@ -192,9 +178,7 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
                                 <textarea name="appearanceReverse" value={formData.appearanceReverse} readOnly placeholder="AI sẽ tạo ra phiên bản ngoại hình đối lập hoặc hắc hóa..." className="flex-1 w-full rounded-xl border border-violet-500/10 bg-slate-950/40 p-4 text-sm leading-7 text-slate-200 resize-none custom-scrollbar cursor-not-allowed focus:outline-none placeholder-slate-600" />
                             </div>
 
-                            {/* =========================
-            TÍNH CÁCH ĐẢO NGƯỢC
-        ========================= */}
+                            {/* TÍNH CÁCH ĐẢO NGƯỢC */}
                             <div className="flex-1 flex flex-col min-h-0">
                                 <div className="flex items-center justify-between mb-2">
                                     <label className="text-xs font-bold uppercase tracking-wider text-violet-300">Tính cách đảo ngược</label>
@@ -204,9 +188,7 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
                             </div>
                         </div>
                     </div>{" "}
-                    {/* =========================
-                        CỘT 3 : KẾT QUẢ CUỐI CÙNG
-                    ========================= */}
+                    {/* CỘT 3 : KẾT QUẢ CUỐI CÙNG */}
                     <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.02] p-5 flex flex-col shadow-lg">
                         {/* HEADER */}
                         <div className="flex items-center justify-between border-b border-emerald-500/10 pb-3 mb-4 shrink-0">
@@ -220,18 +202,14 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
 
                         {/* BODY */}
                         <div className="flex-1 flex flex-col gap-5 min-h-0">
-                            {/* =========================
-                                NGOẠI HÌNH CUỐI
-                            ========================= */}
+                            {/* NGOẠI HÌNH CUỐI */}
                             <div className="flex-1 flex flex-col min-h-0">
                                 <label className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-300">Ngoại hình cuối cùng</label>
 
                                 <textarea name="appearanceFinal" value={formData.appearanceFinal} onChange={handleTextChange} placeholder="Chỉnh sửa hoặc tổng hợp ngoại hình cuối cùng..." className="flex-1 w-full rounded-xl border border-emerald-500/10 bg-slate-900/30 p-4 text-sm leading-7 text-white resize-none custom-scrollbar focus:outline-none focus:border-emerald-500/40 transition placeholder-slate-600" />
                             </div>
 
-                            {/* =========================
-                                TÍNH CÁCH CUỐI
-                            ========================= */}
+                            {/* TÍNH CÁCH CUỐI */}
                             <div className="flex-1 flex flex-col min-h-0">
                                 <label className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-300">Tính cách cuối cùng</label>
 

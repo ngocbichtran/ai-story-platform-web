@@ -20,7 +20,7 @@ export default function MainLayouts() {
             return;
         }
 
-        // TỐI ƯU: Nếu đã có thông tin dữ liệu user cũ rồi thì không cần bật màn hình loading nữa
+        // Nếu đã có thông tin dữ liệu user cũ rồi thì không cần bật màn hình loading nữa
         if (currentUser) {
             setLoading(false);
         }

@@ -66,7 +66,7 @@ export default function ChapterEditorPage() {
             setContent(data.content || "");
 
             if (data.updatedAt) {
-                setUpdatedAt(new Date(data.updatedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
+                setUpdatedAt(formatShortTime(data.updatedAt));
             }
         } catch (err) {
             console.error("Lỗi khi tải thông tin chương:", err);
@@ -79,7 +79,7 @@ export default function ChapterEditorPage() {
     };
 
     // =========================================================================
-    // 2. API: LƯU THỦ CÔNG & TẠO PHIÊN BẢN SNAPSHOT LỊCH SỬ (TỐI ĐA 10 BẢN)
+    // 2. API: LƯU THỦ CÔNG & TẠO PHIÊN BẢN SNAPSHOT LỊCH SỬ
     // =========================================================================
     const handleSaveContent = async () => {
         setIsSaving(true);
@@ -97,6 +97,7 @@ export default function ChapterEditorPage() {
             if (res.data.success) {
                 toast.success("Đã lưu nội dung chương thành công!");
                 setAutoSaveStatus("Đã lưu thủ công");
+                setUpdatedAt(formatShortTime(new Date()));
                 setRestoredVersionId(null);
                 if (isHistoryOpen) loadVersionHistory();
             }
@@ -109,7 +110,35 @@ export default function ChapterEditorPage() {
     };
 
     // =========================================================================
-    // 3. API: AUTOSAVE TỰ ĐỘNG NGẦM (ĐÃ SỬA URL ĐÚNG CHUẨN)
+    // LẤY GIỜ THỰC TẾ TRỰC TIẾP TỪ MÁY TÍNH
+    // =========================================================================
+    const formatTime = (rawDate) => {
+        const dt = rawDate ? new Date(rawDate) : new Date();
+        if (isNaN(dt.getTime())) return "Vừa xong";
+
+        const hours = String(dt.getHours()).padStart(2, "0");
+        const minutes = String(dt.getMinutes()).padStart(2, "0");
+        const seconds = String(dt.getSeconds()).padStart(2, "0");
+        const day = String(dt.getDate()).padStart(2, "0");
+        const month = String(dt.getMonth() + 1).padStart(2, "0");
+        const year = dt.getFullYear();
+
+        return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+    };
+
+    const formatShortTime = (rawDate) => {
+        const dt = rawDate ? new Date(rawDate) : new Date();
+        if (isNaN(dt.getTime())) return "Vừa xong";
+
+        const hours = String(dt.getHours()).padStart(2, "0");
+        const minutes = String(dt.getMinutes()).padStart(2, "0");
+        const seconds = String(dt.getSeconds()).padStart(2, "0");
+
+        return `${hours}:${minutes}:${seconds}`;
+    };
+
+    // =========================================================================
+    // 3. API: AUTOSAVE TỰ ĐỘNG NGẦM
     // =========================================================================
     const triggerAutoSave = async (contentToSave) => {
         try {
@@ -120,7 +149,27 @@ export default function ChapterEditorPage() {
             const res = await axios.put(`https://api.baostory.fun/api/chapters/autosave/${storyId}/${chapterNumber}`, { content: contentToSave }, config);
 
             if (res.data.success) {
-                setAutoSaveStatus(res.data.data?.savedAtText || "Đã lưu nháp tự động");
+                let serverText = res.data.data?.savedAtText || "";
+
+                //TỰ ĐỘNG BÙ TRỪ 7 TIẾNG CHO CHUỖI GIỜ TỪ SERVER TRẢ VỀ NẾU BỊ LỆCH
+                if (serverText) {
+                    // Dùng Regex tìm định dạng giờ dạng HH:mm:ss trong chuỗi của server
+                    serverText = serverText.replace(/\d{2}:\d{2}:\d{2}/, (match) => {
+                        const [h, m, s] = match.split(":").map(Number);
+                        const date = new Date();
+                        date.setHours(h + 7, m, s); // Cộng bù 7 tiếng trực tiếp
+                        return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}:${String(date.getSeconds()).padStart(2, "0")}`;
+                    });
+                }
+
+                setAutoSaveStatus(serverText || "Đã lưu nháp tự động");
+
+                // Lấy giờ hiện tại của máy tính cho phần Cập nhật bên trái
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, "0");
+                const minutes = String(now.getMinutes()).padStart(2, "0");
+                const seconds = String(now.getSeconds()).padStart(2, "0");
+                setUpdatedAt(`${hours}:${minutes}:${seconds}`);
             }
         } catch (err) {
             console.error("Lỗi lưu nháp ngầm:", err);
@@ -159,10 +208,15 @@ export default function ChapterEditorPage() {
             const res = await axios.get(`https://api.baostory.fun/api/chapters/history`, config);
             const historyData = res.data.data || [];
 
-            setVersionHistory(historyData);
+            const formattedHistory = historyData.map((ver) => ({
+                ...ver,
+                createdAt: formatTime(ver.createdAt || ver.created_at),
+            }));
 
-            if (historyData.length > 0) {
-                setPreviewVersion(historyData[0]);
+            setVersionHistory(formattedHistory);
+
+            if (formattedHistory.length > 0) {
+                setPreviewVersion(formattedHistory[0]);
             } else {
                 setPreviewVersion(null);
             }
@@ -176,7 +230,7 @@ export default function ChapterEditorPage() {
     };
 
     // =========================================================================
-    // 5. KHÔI PHỤC VÀ ĐÁNH DẤU BẢN ĐANG SỬ DỤNG (ĐÃ SỬA URL ĐÚNG CHUẨN)
+    // 5. KHÔI PHỤC PHIÊN BẢN
     // =========================================================================
     const handleRestoreVersion = async (ver) => {
         setContent(ver.content);
@@ -190,6 +244,7 @@ export default function ChapterEditorPage() {
 
             await axios.put(`https://api.baostory.fun/api/chapters/restore/${storyId}/${chapterNumber}`, { content: ver.content }, config);
             setAutoSaveStatus("Đã khôi phục và đồng bộ");
+            setUpdatedAt(formatShortTime(new Date()));
         } catch (err) {
             console.error("Lỗi gọi API khôi phục:", err);
             toast.error("Không thể đồng bộ bản khôi phục xuống cơ sở dữ liệu.");
@@ -197,37 +252,57 @@ export default function ChapterEditorPage() {
     };
 
     // =========================================================================
-    // 6. AI BIÊN TẬP & SỬA LỖI CHÍNH TẢ
+    // AI BIÊN TẬP & SỬA LỖI CHÍNH TẢ
     // =========================================================================
     const handleAIEnhance = async () => {
-        if (!content.trim()) {
-            toast.error("Vui lòng nhập nội dung trước khi kiểm tra!");
-            return;
-        }
+        if (!storyId || !chapterNumber) return;
 
         try {
             setIsAILoading(true);
             setShowAISidebar(true);
+
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
             const payload = {
                 storyId: Number(storyId),
                 chapterNumber: Number(chapterNumber),
-                content: content,
             };
 
-            const res = await axios.post(`http://localhost:4000/api/chapters/ai/${chapter?.id || storyId}/spell-check`, payload, config);
+            const requestUrl = `https://api.baostory.fun/api/chapters/ai/${chapterNumber}/spell-check`;
+            const response = await axios.post(requestUrl, payload, config);
 
-            if (res.data.success) {
-                const polished = res.data.data?.polishedContent || res.data.data?.polished_content;
-                setOutlineAIResult(polished || "AI đã rà soát và không phát hiện lỗi chính tả nghiêm trọng.");
-                toast.success("AI đã tối ưu xong nội dung!");
+            if (response.data && response.data.success === true) {
+                let polishedContent = "";
+
+                const extractContent = (json) => {
+                    if (json && typeof json === "object") {
+                        if (json.hasOwnProperty("content") && typeof json.content === "string" && json.content.trim() !== "") {
+                            return json.content;
+                        }
+                        if (json.hasOwnProperty("polishedContent") && typeof json.polishedContent === "string") {
+                            return json.polishedContent;
+                        }
+                        if (json.hasOwnProperty("data")) {
+                            return extractContent(json.data);
+                        }
+                    } else if (typeof json === "string") {
+                        return json;
+                    }
+                    return "";
+                };
+
+                polishedContent = extractContent(response.data);
+                const finalResultText = polishedContent.trim() !== "" ? polishedContent.trim() : "AI đã quét xong và không phát hiện lỗi chính tả cần điều chỉnh.";
+
+                setOutlineAIResult(finalResultText);
+                toast.success("Sửa chính tả thành công!");
+            } else {
+                toast.error(response.data?.message || "Không thể kiểm tra chính tả.");
             }
         } catch (error) {
             console.error("Lỗi AI kiểm tra chính tả:", error);
-            setOutlineAIResult(`[AI Gợi ý Offline] ${content}\n\n*(Đã kiểm tra cấu trúc câu và từ vựng)*`);
-            toast.success("Đã tạo gợi ý sửa lỗi!");
+            toast.error("Không thể kết nối với hệ thống AI kiểm tra chính tả.");
         } finally {
             setIsAILoading(false);
         }
@@ -296,11 +371,11 @@ export default function ChapterEditorPage() {
                         <button onClick={() => navigate(`/stories/${storyId}/editor/overview`)} className="flex-none inline-flex items-center justify-center p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-slate-400 hover:text-white transition-all duration-200 active:scale-95" title="Quay lại">
                             <ChevronLeft size={20} />
                         </button>
-                        <div className="min-w-0 max-w-[200px] sm:max-w-[300px]">
-                            <div className="text-[11px] font-bold text-blue-400 uppercase tracking-widest truncate">Chương {chapterNumber}</div>
-                            <h1 className="text-sm font-bold text-slate-200 truncate" title={chapterTitle}>
-                                {chapterTitle}
-                            </h1>
+
+                        <div className="min-w-0 w-[350px] sm:w-[480px] flex flex-row items-center gap-3">
+                            <div className="text-[11px] font-bold text-blue-400 uppercase tracking-widest whitespace-nowrap shrink-0">Chương {chapterNumber}</div>
+
+                            <input type="text" value={chapterTitle} onChange={(e) => setChapterTitle(e.target.value)} placeholder="Nhập tên chương..." className="bg-white/10 hover:bg-white/15 focus:bg-white/20 border border-white/20 focus:border-blue-400 rounded-lg px-3 py-1.5 text-sm font-bold text-white outline-none transition flex-1 truncate shadow-inner placeholder-slate-400" title="Nhập trực tiếp để đổi tên chương" />
                         </div>
                     </div>
 
@@ -342,13 +417,29 @@ export default function ChapterEditorPage() {
 
                 {/* CỘT TRÁI: KHUNG TRỢ LÝ AI */}
                 <div className={`h-full flex flex-col min-h-0 transition-all duration-300 ease-in-out ${showAISidebar ? "w-[380px] opacity-100" : "w-0 opacity-0 pointer-events-none -mr-6"}`}>
-                    <div className="flex-1 h-full rounded-3xl border border-white/5 bg-[#10151E]/60 shadow-xl overflow-hidden flex flex-col">
-                        <div className="flex items-center gap-2 text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-white/5 px-6 py-4 select-none flex-none bg-blue-500/5">
-                            <BrainCircuit size={14} />
-                            <span>Gợi ý từ trợ lý AI</span>
+                    <div className="flex-1 h-full rounded-3xl border border-white/5 bg-[#10151E]/60 shadow-xl overflow-y-auto custom-scroll flex flex-col">
+                        <div className="flex items-center justify-between border-b border-white/5 px-6 py-4 select-none flex-none bg-blue-500/5">
+                            <div className="flex items-center gap-2 text-xs font-bold text-blue-400 uppercase tracking-widest">
+                                <span>Gợi ý từ trợ lý BaoStory</span>
+                            </div>
+
+                            {outlineAIResult && (
+                                <button
+                                    onClick={() => {
+                                        setContent(outlineAIResult);
+                                        toast.success("Đã áp dụng nội dung từ AI vào chương!");
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 border border-blue-500/30 transition-all active:scale-95 shadow-sm"
+                                    title="Chèn nội dung này vào khung soạn thảo"
+                                >
+                                    <Check size={13} />
+                                    <span>Chấp nhận</span>
+                                </button>
+                            )}
                         </div>
-                        <div className="flex-1 overflow-y-auto custom-scroll px-6 py-5">
-                            <textarea readOnly value={outlineAIResult} placeholder="Nội dung tối ưu từ AI hiển thị ở đây..." className="w-full h-full bg-transparent text-slate-400 text-[15px] leading-7 font-normal resize-none border-none focus:ring-0 p-0 focus:outline-none cursor-default selection:bg-blue-500/20" />
+
+                        <div className="flex-1 px-6 py-5">
+                            <textarea readOnly value={outlineAIResult} placeholder="Nội dung tối ưu từ AI hiển thị ở đây..." className="w-full min-h-full bg-transparent text-slate-400 text-[15px] leading-7 font-normal resize-none border-none focus:ring-0 p-0 focus:outline-none cursor-default selection:bg-blue-500/20" />
                         </div>
                     </div>
                 </div>
@@ -356,7 +447,7 @@ export default function ChapterEditorPage() {
                 {/* CỘT PHẢI: KHUNG SOẠN THẢO DUY NHẤT */}
                 <div className="flex-1 h-full flex flex-col min-h-0 items-center justify-center">
                     <div className="w-full max-w-[1100px] h-full flex flex-col min-h-0 relative">
-                        <div className="flex-1 h-full rounded-3xl border border-white/5 bg-[#10151E] shadow-2xl shadow-black/40 overflow-hidden flex flex-col">
+                        <div className="flex-1 h-full rounded-3xl border border-white/5 bg-[#10151E] shadow-2xl shadow-black/40 overflow-y-auto custom-scroll flex flex-col">
                             <div className="flex items-center justify-between border-b border-white/5 px-6 py-3 select-none flex-none">
                                 <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
                                     <BookOpen size={14} className="text-slate-600" />
@@ -376,7 +467,7 @@ export default function ChapterEditorPage() {
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto custom-scroll px-8 md:px-10 py-6">
+                            <div className="flex-1 px-8 md:px-10 py-6">
                                 <textarea value={content} onChange={(e) => setContent(e.target.value)} disabled={isAILoading} placeholder="Bắt đầu gõ nội dung chương tại đây..." className={`w-full h-full bg-transparent text-slate-200 text-base leading-relaxed tracking-[0.01em] font-normal resize-none border-none focus:ring-0 p-0 placeholder-slate-700 focus:outline-none ${isAILoading ? "opacity-30 cursor-not-allowed" : ""}`} />
                             </div>
 
@@ -399,7 +490,7 @@ export default function ChapterEditorPage() {
                     </div>
                 </div>
 
-                {/* 3. SIDEBAR/DRAWER LỊCH SỬ PHIÊN BẢN (TRÀN FULL MÀN HÌNH) */}
+                {/* 3. SIDEBAR/DRAWER LỊCH SỬ PHIÊN BẢN */}
                 <div className={`absolute top-0 right-0 h-full bg-[#10151E] border-l border-white/10 shadow-2xl z-40 flex flex-col transition-all duration-300 ${isHistoryOpen ? "w-screen sm:w-full translate-x-0" : "w-0 translate-x-full overflow-hidden"}`}>
                     <div className="flex items-center justify-between px-6.5 py-4 border-b border-white/5 select-none bg-black/20 flex-none">
                         <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-widest">
