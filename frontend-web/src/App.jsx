@@ -1,8 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 // auth
 import LoginPage from "./features/auth/pages/LoginPage";
-import RegisterPage from "./features/auth/pages/RegisterPage";
-import ForgotPasswordPage from "./features/auth/pages/ForgotPasswordPage";
 import ChangePasswordPage from "./features/dashboard/pages/ChangePasswordPage";
 
 // Khung main
@@ -47,8 +45,6 @@ function App() {
 
                 {/* Auth */}
                 <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/forgotPassword" element={<ForgotPasswordPage />} />
 
                 {/* Dashboard */}
                 <Route element={<MainLayout />}>
