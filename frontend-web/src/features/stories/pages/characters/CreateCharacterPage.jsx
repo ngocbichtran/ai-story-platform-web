@@ -19,7 +19,7 @@ export default function CreateCharacterPage() {
 
     const [formData, setFormData] = useState({
         name: "",
-        role: "",
+        role: "Nhân vật chính",
         gender: "Nam",
         age: "",
         occupation: "",
@@ -260,7 +260,20 @@ export default function CreateCharacterPage() {
                                             </div>
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Vai trò *</label>
-                                                <input type="text" name="role" value={formData.role} onChange={handleChange} required placeholder="Ví dụ: Main, Supporting..." className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition placeholder-slate-600" />
+                                                <select name="role" value={formData.role} onChange={handleChange} required className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition">
+                                                    <option value="Nhân vật chính" className="bg-[#070b14]">
+                                                        Nhân vật chính
+                                                    </option>
+                                                    <option value="Nhân vật phụ" className="bg-[#070b14]">
+                                                        Nhân vật phụ
+                                                    </option>
+                                                    <option value="Nhân vật phản diện" className="bg-[#070b14]">
+                                                        Nhân vật phản diện
+                                                    </option>
+                                                    <option value="Nhân vật khác" className="bg-[#070b14]">
+                                                        Nhân vật khác
+                                                    </option>
+                                                </select>
                                             </div>
 
                                             <div className="grid grid-cols-12 gap-2">
@@ -303,6 +316,30 @@ export default function CreateCharacterPage() {
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Vị trí hiện tại</label>
                                                 <input type="text" name="currentLocation" value={formData.currentLocation} onChange={handleChange} placeholder="Vị trí hiện tại..." className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition placeholder-slate-600" />
+                                            </div>
+
+                                            <div className="flex flex-col gap-1.5">
+                                                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">URL Ảnh đại diện (Avatar)</label>
+                                                <input type="text" name="avatar" value={formData.avatar} onChange={handleChange} placeholder="https://..." className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition placeholder-slate-600" />
+                                            </div>
+
+                                            {/* TAGS INPUT */}
+                                            <div className="flex flex-col gap-1.5">
+                                                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Thẻ (Nhấn Enter để thêm)</label>
+                                                <input type="text" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleAddTag} placeholder="Thêm tag và nhấn Enter..." className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition placeholder-slate-600" />
+                                                {formData.tags.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1.5 mt-2">
+                                                        {formData.tags.map((tag, idx) => (
+                                                            <span key={idx} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-500/15 border border-blue-500/30 text-xs text-blue-300">
+                                                                <Tag size={11} />
+                                                                {tag}
+                                                                <button type="button" onClick={() => handleRemoveTag(tag)} className="ml-1 text-slate-400 hover:text-white">
+                                                                    <X size={12} />
+                                                                </button>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </section>

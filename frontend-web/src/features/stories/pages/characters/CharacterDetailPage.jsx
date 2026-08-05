@@ -23,7 +23,7 @@ export default function CharacterDetailPage() {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
 
                 // Gọi API lấy thông tin chi tiết nhân vật theo characterId (Đặc tả 017_F1)
-                const res = await axios.get(`https://api.baostory.fun/api/characters/${characterId}`, config);
+                const res = await axios.get(`http://api.baostory.fun/api/characters/${characterId}`, config);
                 if (res.data.success) {
                     setCharacter(res.data.data);
                 }
@@ -167,6 +167,23 @@ export default function CharacterDetailPage() {
                                                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Trạng thái</span>
                                                 <span className={`font-semibold px-2.5 py-0.5 rounded-full text-xs border ${character.status === "dead" ? "bg-red-500/15 text-red-400 border-red-500/30" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"}`}>{character.status === "dead" ? "Đã chết" : character.status === "missing" ? "Mất tích" : character.status === "unknown" ? "Không rõ" : "Còn sống"}</span>
                                             </div>
+
+                                            {/* TAGS */}
+                                            <div className="pt-2 border-t border-white/5">
+                                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-2">Thẻ (Tags)</span>
+                                                {character.tags && character.tags.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {character.tags.map((tag, idx) => (
+                                                            <span key={idx} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 border border-white/10 text-xs text-slate-300">
+                                                                <Tag size={11} className="text-blue-400" />
+                                                                {tag}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-500 italic">Chưa có thẻ tags.</span>
+                                                )}
+                                            </div>
                                         </div>
                                     </section>
 
@@ -191,7 +208,9 @@ export default function CharacterDetailPage() {
                                                 <p className="leading-6 whitespace-pre-line">{character.personality || "Chưa có mô tả tính cách."}</p>
                                             </div>
                                             <div className="pt-3 border-t border-white/5">
-                                                <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center gap-1.5">Năng lực đặc biệt</h3>
+                                                <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center gap-1.5">
+                                                    <Zap size={13} /> Năng lực đặc biệt
+                                                </h3>
                                                 <p className="leading-6 whitespace-pre-line">{character.ability || "Chưa có mô tả năng lực."}</p>
                                             </div>
                                         </div>
@@ -219,7 +238,9 @@ export default function CharacterDetailPage() {
                                                 <p className="leading-6 whitespace-pre-line">{character.goal || "Chưa cập nhật mục tiêu."}</p>
                                             </div>
                                             <div className="pt-3 border-t border-white/5">
-                                                <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1 flex items-center gap-1.5">Hành trình phát triển</h3>
+                                                <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1 flex items-center gap-1.5">
+                                                    <TrendingUp size={13} /> Hành trình phát triển
+                                                </h3>
                                                 <p className="leading-6 whitespace-pre-line">{character.development || "Chưa cập nhật hành trình phát triển."}</p>
                                             </div>
                                         </div>
