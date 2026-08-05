@@ -23,7 +23,7 @@ export default function CharacterDetailPage() {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
 
                 // Gọi API lấy thông tin chi tiết nhân vật theo characterId (Đặc tả 017_F1)
-                const res = await axios.get(`http://api.baostory.fun/api/characters/${characterId}`, config);
+                const res = await axios.get(`https://api.baostory.fun/api/characters/${characterId}`, config);
                 if (res.data.success) {
                     setCharacter(res.data.data);
                 }
