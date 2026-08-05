@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, Pencil, User, BadgeInfo, Eye, BookOpen, Target, Users, Loader2 } from "lucide-react";
+import { ArrowLeft, Pencil, User, BadgeInfo, Eye, BookOpen, Target, Users, Loader2, Zap, TrendingUp, MapPin, Tag } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -68,7 +68,7 @@ export default function CharacterDetailPage() {
 
             <main className="relative z-10 mx-auto max-w-7xl pt-2 flex-1 flex flex-col gap-4 w-full pb-6">
                 {/* ==========================================
-                    HEADER (Đồng bộ tuyệt đối với Form)
+                    HEADER
                 ========================================== */}
                 <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-xl shrink-0">
                     <div className="absolute -right-20 -top-20 h-28 w-28 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
@@ -80,11 +80,15 @@ export default function CharacterDetailPage() {
                             </button>
                         </div>
 
-                        {/* TITLE */}
+                        {/* TITLE & AVATAR */}
                         <div className="col-span-12 md:col-span-4 flex items-center gap-3 rounded-xl border border-white/5 bg-slate-950/30 p-2">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10">
-                                <User size={20} className="text-blue-400" />
-                            </div>
+                            {character.avatar ? (
+                                <img src={character.avatar} alt={character.name} className="h-10 w-10 shrink-0 rounded-xl object-cover border border-blue-500/20" />
+                            ) : (
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10">
+                                    <User size={20} className="text-blue-400" />
+                                </div>
+                            )}
                             <div className="min-w-0 flex-1">
                                 <h1 className="truncate text-lg font-black">{character.name}</h1>
                             </div>
@@ -102,7 +106,7 @@ export default function CharacterDetailPage() {
                 </section>
 
                 {/* ==========================================
-                    CONTENT LAYOUT (Đồng bộ Tab & 3 Khung Card)
+                    CONTENT LAYOUT
                 ========================================== */}
                 <section className="w-full flex-1 flex flex-col min-h-0">
                     <div className="flex-1 flex flex-col rounded-2xl border border-white/10 bg-slate-900/30 backdrop-blur-xl shadow-xl overflow-hidden">
@@ -129,7 +133,7 @@ export default function CharacterDetailPage() {
                                     <section className="lg:col-span-4 rounded-2xl border border-blue-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col gap-4">
                                         <div className="flex items-center gap-3 border-b border-white/10 pb-3 shrink-0">
                                             <User size={18} className="text-blue-400" />
-                                            <h2 className="font-bold text-white">Thông tin</h2>
+                                            <h2 className="font-bold text-white">Thông tin chung</h2>
                                         </div>
                                         <div className="space-y-3.5 text-sm flex-1 overflow-y-auto pr-1 custom-scrollbar">
                                             <div className="flex items-center justify-between">
@@ -153,13 +157,21 @@ export default function CharacterDetailPage() {
                                                 <span className="font-semibold text-white">{character.occupation || "Chưa cập nhật"}</span>
                                             </div>
                                             <div className="flex items-center justify-between">
+                                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Vị trí hiện tại</span>
+                                                <span className="font-semibold text-white flex items-center gap-1">
+                                                    <MapPin size={13} className="text-cyan-400" />
+                                                    {character.currentLocation || "Chưa cập nhật"}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
                                                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Trạng thái</span>
-                                                <span className={`font-semibold px-2.5 py-0.5 rounded-full text-xs border ${character.status === "dead" ? "bg-red-500/15 text-red-400 border-red-500/30" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"}`}>{character.status === "dead" ? "Đã chết" : "Còn sống"}</span>
+                                                <span className={`font-semibold px-2.5 py-0.5 rounded-full text-xs border ${character.status === "dead" ? "bg-red-500/15 text-red-400 border-red-500/30" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"}`}>{character.status === "dead" ? "Đã chết" : character.status === "missing" ? "Mất tích" : character.status === "unknown" ? "Không rõ" : "Còn sống"}</span>
                                             </div>
                                         </div>
                                     </section>
+
                                     {/* NGOẠI HÌNH */}
-                                    <section className="lg:col-span-4 rounded-2xl border border-violet-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[415px]">
+                                    <section className="lg:col-span-4 rounded-2xl border border-violet-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[480px]">
                                         <div className="mb-4 flex items-center gap-3 border-b border-white/10 pb-3 shrink-0">
                                             <Eye size={18} className="text-violet-400" />
                                             <h2 className="font-bold text-violet-300">Ngoại hình</h2>
@@ -167,13 +179,22 @@ export default function CharacterDetailPage() {
                                         <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0 text-sm leading-7 text-slate-300 whitespace-pre-line">{character.appearance || "Chưa có mô tả ngoại hình."}</div>
                                     </section>
 
-                                    {/* TÍNH CÁCH */}
-                                    <section className="lg:col-span-4 rounded-2xl border border-emerald-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[415px]">
+                                    {/* TÍNH CÁCH & NĂNG LỰC */}
+                                    <section className="lg:col-span-4 rounded-2xl border border-emerald-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[480px]">
                                         <div className="mb-4 flex items-center gap-3 border-b border-white/10 pb-3 shrink-0">
                                             <BadgeInfo size={18} className="text-emerald-400" />
-                                            <h2 className="font-bold text-emerald-300">Tính cách</h2>
+                                            <h2 className="font-bold text-emerald-300">Tính cách & Năng lực</h2>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0 text-sm leading-7 text-slate-300 whitespace-pre-line">{character.personality || "Chưa có mô tả tính cách."}</div>
+                                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0 space-y-4 text-sm text-slate-300">
+                                            <div>
+                                                <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-1">Tính cách</h3>
+                                                <p className="leading-6 whitespace-pre-line">{character.personality || "Chưa có mô tả tính cách."}</p>
+                                            </div>
+                                            <div className="pt-3 border-t border-white/5">
+                                                <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center gap-1.5">Năng lực đặc biệt</h3>
+                                                <p className="leading-6 whitespace-pre-line">{character.ability || "Chưa có mô tả năng lực."}</p>
+                                            </div>
+                                        </div>
                                     </section>
                                 </div>
                             )}
@@ -181,22 +202,31 @@ export default function CharacterDetailPage() {
                             {/* TAB 2: TUYẾN NHÂN VẬT */}
                             {infoTab === "storyline" && (
                                 <div className="grid gap-5 lg:grid-cols-12 w-full">
-                                    {/* MỤC TIÊU */}
-                                    <section className="lg:col-span-4 rounded-2xl border border-yellow-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[415px]">
+                                    {/* MỤC TIÊU & PHÁT TRIỂN */}
+                                    <section className="lg:col-span-4 rounded-2xl border border-yellow-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[480px]">
                                         <div className="mb-4 flex items-center gap-3 border-b border-white/10 pb-3 shrink-0">
                                             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-yellow-500/20 bg-yellow-500/10">
                                                 <Target size={18} className="text-yellow-400" />
                                             </div>
                                             <div>
-                                                <h2 className="font-bold text-yellow-300">Mục tiêu</h2>
-                                                <p className="text-xs text-slate-400">Động lực cốt lõi.</p>
+                                                <h2 className="font-bold text-yellow-300">Mục tiêu & Phát triển</h2>
+                                                <p className="text-xs text-slate-400">Động lực và hành trình.</p>
                                             </div>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0 text-sm leading-8 text-slate-300 whitespace-pre-line">{character.goal || "Chưa cập nhật mục tiêu."}</div>
+                                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0 space-y-4 text-sm text-slate-300">
+                                            <div>
+                                                <h3 className="text-xs font-bold uppercase tracking-wider text-yellow-400 mb-1">Mục tiêu</h3>
+                                                <p className="leading-6 whitespace-pre-line">{character.goal || "Chưa cập nhật mục tiêu."}</p>
+                                            </div>
+                                            <div className="pt-3 border-t border-white/5">
+                                                <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1 flex items-center gap-1.5">Hành trình phát triển</h3>
+                                                <p className="leading-6 whitespace-pre-line">{character.development || "Chưa cập nhật hành trình phát triển."}</p>
+                                            </div>
+                                        </div>
                                     </section>
 
                                     {/* TIỂU SỬ */}
-                                    <section className="lg:col-span-4 rounded-2xl border border-cyan-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[415px]">
+                                    <section className="lg:col-span-4 rounded-2xl border border-cyan-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[480px]">
                                         <div className="mb-4 flex items-center gap-3 border-b border-white/10 pb-3 shrink-0">
                                             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10">
                                                 <BookOpen size={18} className="text-cyan-400" />
@@ -210,7 +240,7 @@ export default function CharacterDetailPage() {
                                     </section>
 
                                     {/* MỐI QUAN HỆ */}
-                                    <section className="lg:col-span-4 rounded-2xl border border-white/10 bg-slate-900/30 backdrop-blur-xl shadow-xl flex flex-col h-[415px] overflow-hidden">
+                                    <section className="lg:col-span-4 rounded-2xl border border-white/10 bg-slate-900/30 backdrop-blur-xl shadow-xl flex flex-col h-[480px] overflow-hidden">
                                         <div className="mb-2 flex items-center gap-3 border-b border-white/10 p-5 pb-3 shrink-0">
                                             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10">
                                                 <Users size={18} className="text-blue-400" />
@@ -226,21 +256,27 @@ export default function CharacterDetailPage() {
                                                 <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-white/10 text-sm text-slate-500 italic py-12">Chưa có mối quan hệ nào.</div>
                                             ) : (
                                                 <div className="flex flex-col gap-2.5 w-full">
-                                                    {character.relationship.map((item) => (
-                                                        <div key={item.id} className="group flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.02] px-5 py-3 transition-all duration-300 hover:border-blue-500/30 hover:bg-blue-500/[0.04]">
-                                                            <div className="flex items-center gap-4 min-w-0">
-                                                                <div className="min-w-0">
-                                                                    <h3 className="text-sm font-semibold text-white truncate">{item.name}</h3>
-                                                                    <p className="mt-0.5 text-xs text-slate-400 truncate">{item.relationType}</p>
+                                                    {character.relationship.map((item, index) => {
+                                                        const targetId = item.characterId || item.id;
+                                                        return (
+                                                            <div key={index} className="group flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.02] px-4 py-3 transition-all duration-300 hover:border-blue-500/30 hover:bg-blue-500/[0.04]">
+                                                                <div className="flex items-center gap-3 min-w-0">
+                                                                    <div className="min-w-0">
+                                                                        <h3 className="text-sm font-semibold text-white truncate">{item.name || "Nhân vật liên kết"}</h3>
+                                                                        <p className="mt-0.5 text-xs text-slate-400 truncate">{item.relationType}</p>
+                                                                        {item.description && <p className="mt-1 text-[11px] text-slate-500 line-clamp-1">{item.description}</p>}
+                                                                    </div>
                                                                 </div>
+                                                                {targetId && (
+                                                                    <div className="flex items-center gap-2 shrink-0">
+                                                                        <button onClick={() => navigate(`/stories/${storyId}/editor/characters/${targetId}`)} className="flex items-center gap-1.5 rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300 transition hover:bg-blue-500/20">
+                                                                            Chi tiết
+                                                                        </button>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                            <div className="flex items-center gap-2 shrink-0">
-                                                                <button onClick={() => navigate(`/stories/${storyId}/editor/characters/${item.id}`)} className="flex items-center gap-1.5 rounded-xl border border-blue-500/20 bg-blue-500/10 px-3.5 py-1.5 text-xs font-medium text-blue-300 transition hover:bg-blue-500/20">
-                                                                    Chi tiết
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </div>

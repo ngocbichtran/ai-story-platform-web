@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, Save, User, BadgeInfo, Eye, BookOpen, Target, Users, Trash2, Plus, X, Pencil, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, User, BadgeInfo, Eye, BookOpen, Target, Users, Trash2, Plus, X, Pencil, Loader2, Zap, TrendingUp, MapPin, Tag } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -27,14 +27,21 @@ export default function CreateCharacterPage() {
         personality: "",
         background: "",
         goal: "",
-        powerLevel: "",
+        ability: "",
+        development: "",
+        currentLocation: "",
+        avatar: "",
+        tags: [],
         status: "alive",
         relationship: [],
     });
 
+    const [tagInput, setTagInput] = useState("");
+
     const [modalData, setModalData] = useState({
         selectedCharId: "",
         relationType: "Đồng minh",
+        description: "",
     });
 
     // Lấy danh sách nhân vật trong truyện để liên kết mối quan hệ
@@ -64,11 +71,30 @@ export default function CreateCharacterPage() {
         setModalData((prev) => ({ ...prev, [name]: value }));
     };
 
+    // Xử lý Thẻ (Tags)
+    const handleAddTag = (e) => {
+        if (e.key === "Enter" && tagInput.trim()) {
+            e.preventDefault();
+            if (!formData.tags.includes(tagInput.trim())) {
+                setFormData((prev) => ({ ...prev, tags: [...prev.tags, tagInput.trim()] }));
+            }
+            setTagInput("");
+        }
+    };
+
+    const handleRemoveTag = (tagToRemove) => {
+        setFormData((prev) => ({
+            ...prev,
+            tags: prev.tags.filter((tag) => tag !== tagToRemove),
+        }));
+    };
+
     const handleEditRelationshipClick = (item) => {
-        setEditingRelationId(item.id);
+        setEditingRelationId(item.characterId || item.id);
         setModalData({
-            selectedCharId: item.id.toString(),
+            selectedCharId: (item.characterId || item.id).toString(),
             relationType: item.relationType,
+            description: item.description || "",
         });
         setIsModalOpen(true);
     };
@@ -83,31 +109,38 @@ export default function CreateCharacterPage() {
         const targetChar = allCharacters.find((c) => c.id === modalData.selectedCharId || c.id === parseInt(modalData.selectedCharId));
         if (!targetChar) return;
 
+        const relationPayload = {
+            characterId: targetChar.id,
+            name: targetChar.name,
+            relationType: modalData.relationType,
+            description: modalData.description,
+        };
+
         if (editingRelationId) {
             setFormData((prev) => ({
                 ...prev,
-                relationship: prev.relationship.map((r) => (r.id === editingRelationId ? { ...r, id: targetChar.id, name: targetChar.name, relationType: modalData.relationType } : r)),
+                relationship: prev.relationship.map((r) => ((r.characterId || r.id) === editingRelationId ? relationPayload : r)),
             }));
         } else {
-            if (formData.relationship.some((r) => r.id === targetChar.id)) {
+            if (formData.relationship.some((r) => (r.characterId || r.id) === targetChar.id)) {
                 toast.error("Mối quan hệ với nhân vật này đã tồn tại!");
                 return;
             }
             setFormData((prev) => ({
                 ...prev,
-                relationship: [...prev.relationship, { id: targetChar.id, name: targetChar.name, relationType: modalData.relationType }],
+                relationship: [...prev.relationship, relationPayload],
             }));
         }
 
         setIsModalOpen(false);
         setEditingRelationId(null);
-        setModalData({ selectedCharId: "", relationType: "Đồng minh" });
+        setModalData({ selectedCharId: "", relationType: "Đồng minh", description: "" });
     };
 
     const handleDeleteRelationship = (id) => {
         setFormData((prev) => ({
             ...prev,
-            relationship: prev.relationship.filter((item) => item.id !== id),
+            relationship: prev.relationship.filter((item) => (item.characterId || item.id) !== id),
         }));
     };
 
@@ -128,13 +161,17 @@ export default function CreateCharacterPage() {
                 name: formData.name.trim(),
                 role: formData.role.trim(),
                 gender: formData.gender,
-                age: formData.age,
+                age: formData.age ? Number(formData.age) : 0,
                 occupation: formData.occupation,
                 appearance: formData.appearanceFinal,
                 personality: formData.personality,
                 background: formData.background,
                 goal: formData.goal,
-                powerLevel: formData.powerLevel,
+                ability: formData.ability,
+                development: formData.development,
+                currentLocation: formData.currentLocation,
+                avatar: formData.avatar,
+                tags: formData.tags,
                 status: formData.status,
                 relationship: formData.relationship,
             };
@@ -168,11 +205,15 @@ export default function CreateCharacterPage() {
                         </div>
 
                         <div className="col-span-12 md:col-span-4 flex items-center gap-3 rounded-xl border border-white/5 bg-slate-950/30 p-2">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10">
-                                <User size={20} className="text-blue-400" />
-                            </div>
+                            {formData.avatar ? (
+                                <img src={formData.avatar} alt="Avatar" className="h-10 w-10 shrink-0 rounded-xl object-cover border border-blue-500/20" />
+                            ) : (
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10">
+                                    <User size={20} className="text-blue-400" />
+                                </div>
+                            )}
                             <div className="min-w-0 flex-1">
-                                <h1 className="truncate text-lg font-black">Tạo nhân vật mới</h1>
+                                <h1 className="truncate text-lg font-black">{formData.name ? formData.name : "Tạo nhân vật mới"}</h1>
                             </div>
                         </div>
 
@@ -203,12 +244,14 @@ export default function CreateCharacterPage() {
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-5 custom-scrollbar min-h-0">
+                            {/* TAB 1: HÌNH TƯỢNG NHÂN VẬT */}
                             {infoTab === "figured" && (
                                 <div className="grid gap-5 lg:grid-cols-12 w-full">
+                                    {/* THÔNG TIN CHUNG & TAGS */}
                                     <section className="lg:col-span-4 rounded-2xl border border-blue-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col gap-4">
                                         <div className="flex items-center gap-3 border-b border-white/10 pb-3 shrink-0">
                                             <User size={18} className="text-blue-400" />
-                                            <h2 className="font-bold text-white">Thông tin</h2>
+                                            <h2 className="font-bold text-white">Thông tin chung</h2>
                                         </div>
                                         <div className="space-y-3.5 text-sm">
                                             <div className="flex flex-col gap-1.5">
@@ -217,7 +260,7 @@ export default function CreateCharacterPage() {
                                             </div>
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Vai trò *</label>
-                                                <input type="text" name="role" value={formData.role} onChange={handleChange} required placeholder="Nhập vai trò..." className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition placeholder-slate-600" />
+                                                <input type="text" name="role" value={formData.role} onChange={handleChange} required placeholder="Ví dụ: Main, Supporting..." className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition placeholder-slate-600" />
                                             </div>
 
                                             <div className="grid grid-cols-12 gap-2">
@@ -238,21 +281,17 @@ export default function CreateCharacterPage() {
 
                                                 <div className="col-span-3 flex flex-col gap-1.5">
                                                     <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tuổi</label>
-                                                    <input type="text" name="age" value={formData.age} onChange={handleChange} placeholder="Tuổi" className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-2 py-2 text-xs text-white text-center focus:outline-none focus:border-blue-500/50 transition placeholder-slate-600" />
+                                                    <input type="number" name="age" value={formData.age} onChange={handleChange} placeholder="Tuổi" className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-2 py-2 text-xs text-white text-center focus:outline-none focus:border-blue-500/50 transition placeholder-slate-600" />
                                                 </div>
 
                                                 <div className="col-span-5 flex flex-col gap-1.5">
                                                     <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Trạng thái</label>
-                                                    <div className="flex items-center justify-around bg-slate-950/50 border border-white/10 rounded-xl px-1.5 py-1.5 h-[34px]">
-                                                        <label className="flex items-center gap-1 cursor-pointer text-[11px] text-slate-200 select-none">
-                                                            <input type="radio" name="status" value="alive" checked={formData.status === "alive"} onChange={handleChange} className="accent-blue-500 w-3 h-3" />
-                                                            <span>Sống</span>
-                                                        </label>
-                                                        <label className="flex items-center gap-1 cursor-pointer text-[11px] text-slate-200 select-none">
-                                                            <input type="radio" name="status" value="dead" checked={formData.status === "dead"} onChange={handleChange} className="accent-red-500 w-3 h-3" />
-                                                            <span>Chết</span>
-                                                        </label>
-                                                    </div>
+                                                    <select name="status" value={formData.status} onChange={handleChange} className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-blue-500/50 transition">
+                                                        <option value="alive">Còn sống</option>
+                                                        <option value="dead">Đã chết</option>
+                                                        <option value="missing">Mất tích</option>
+                                                        <option value="unknown">Không rõ</option>
+                                                    </select>
                                                 </div>
                                             </div>
 
@@ -260,10 +299,16 @@ export default function CreateCharacterPage() {
                                                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Nghề nghiệp</label>
                                                 <input type="text" name="occupation" value={formData.occupation} onChange={handleChange} placeholder="Nghề nghiệp..." className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition placeholder-slate-600" />
                                             </div>
+
+                                            <div className="flex flex-col gap-1.5">
+                                                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Vị trí hiện tại</label>
+                                                <input type="text" name="currentLocation" value={formData.currentLocation} onChange={handleChange} placeholder="Vị trí hiện tại..." className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition placeholder-slate-600" />
+                                            </div>
                                         </div>
                                     </section>
 
-                                    <section className="lg:col-span-4 rounded-2xl border border-violet-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[415px]">
+                                    {/* NGOẠI HÌNH */}
+                                    <section className="lg:col-span-4 rounded-2xl border border-violet-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[520px]">
                                         <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
                                             <div className="flex items-center gap-3">
                                                 <Eye size={18} className="text-violet-400" />
@@ -276,32 +321,58 @@ export default function CreateCharacterPage() {
                                         <textarea name="appearanceFinal" value={formData.appearanceFinal} onChange={handleChange} placeholder="Diện mạo hoàn chỉnh sau cùng của nhân vật..." className="flex-1 w-full bg-slate-950/40 border border-white/5 rounded-xl p-4 text-sm text-slate-300 placeholder-slate-600 leading-7 focus:outline-none focus:border-violet-500/30 transition resize-none custom-scrollbar min-h-0" />
                                     </section>
 
-                                    <section className="lg:col-span-4 rounded-2xl border border-emerald-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[415px]">
+                                    {/* TÍNH CÁCH & NĂNG LỰC */}
+                                    <section className="lg:col-span-4 rounded-2xl border border-emerald-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[520px]">
                                         <div className="mb-4 flex items-center gap-3 border-b border-white/10 pb-3 shrink-0">
                                             <BadgeInfo size={18} className="text-emerald-400" />
-                                            <h2 className="font-bold text-emerald-300">Tính cách</h2>
+                                            <h2 className="font-bold text-emerald-300">Tính cách & Năng lực</h2>
                                         </div>
-                                        <textarea name="personality" value={formData.personality} onChange={handleChange} placeholder="Mô tả diễn biến nội tâm, cá tính..." className="flex-1 w-full bg-slate-950/40 border border-white/5 rounded-xl p-4 text-sm text-slate-300 placeholder-slate-600 leading-7 focus:outline-none focus:border-emerald-500/30 transition resize-none custom-scrollbar min-h-0" />
+                                        <div className="flex-1 flex flex-col gap-4 min-h-0">
+                                            <div className="flex-1 flex flex-col min-h-0">
+                                                <label className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-1">Tính cách</label>
+                                                <textarea name="personality" value={formData.personality} onChange={handleChange} placeholder="Mô tả diễn biến nội tâm, cá tính..." className="flex-1 w-full bg-slate-950/40 border border-white/5 rounded-xl p-3 text-sm text-slate-300 placeholder-slate-600 leading-6 focus:outline-none focus:border-emerald-500/30 transition resize-none custom-scrollbar min-h-0" />
+                                            </div>
+                                            <div className="flex-1 flex flex-col min-h-0">
+                                                <label className="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center gap-1.5">
+                                                    <Zap size={13} /> Năng lực đặc biệt
+                                                </label>
+                                                <textarea name="ability" value={formData.ability} onChange={handleChange} placeholder="Mô tả siêu năng lực, kỹ năng chiến đấu..." className="flex-1 w-full bg-slate-950/40 border border-white/5 rounded-xl p-3 text-sm text-slate-300 placeholder-slate-600 leading-6 focus:outline-none focus:border-cyan-500/30 transition resize-none custom-scrollbar min-h-0" />
+                                            </div>
+                                        </div>
                                     </section>
                                 </div>
                             )}
 
+                            {/* TAB 2: TUYẾN NHÂN VẬT */}
                             {infoTab === "storyline" && (
                                 <div className="grid gap-5 lg:grid-cols-12 w-full">
-                                    <section className="lg:col-span-4 rounded-2xl border border-yellow-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[415px]">
+                                    {/* MỤC TIÊU & PHÁT TRIỂN */}
+                                    <section className="lg:col-span-4 rounded-2xl border border-yellow-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[520px]">
                                         <div className="mb-4 flex items-center gap-3 border-b border-white/10 pb-3 shrink-0">
                                             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-yellow-500/20 bg-yellow-500/10">
                                                 <Target size={18} className="text-yellow-400" />
                                             </div>
                                             <div>
-                                                <h2 className="font-bold text-yellow-300">Mục tiêu</h2>
-                                                <p className="text-xs text-slate-400">Động lực cốt lõi.</p>
+                                                <h2 className="font-bold text-yellow-300">Mục tiêu & Phát triển</h2>
+                                                <p className="text-xs text-slate-400">Động lực và hành trình.</p>
                                             </div>
                                         </div>
-                                        <textarea name="goal" value={formData.goal} onChange={handleChange} placeholder="Mục đích tối thượng..." className="flex-1 w-full bg-slate-950/40 border border-white/5 rounded-xl p-4 text-sm text-slate-300 placeholder-slate-600 leading-7 focus:outline-none focus:border-yellow-500/30 transition resize-none custom-scrollbar min-h-0" />
+                                        <div className="flex-1 flex flex-col gap-4 min-h-0">
+                                            <div className="flex-1 flex flex-col min-h-0">
+                                                <label className="text-xs font-bold uppercase tracking-wider text-yellow-400 mb-1">Mục tiêu</label>
+                                                <textarea name="goal" value={formData.goal} onChange={handleChange} placeholder="Mục đích tối thượng..." className="flex-1 w-full bg-slate-950/40 border border-white/5 rounded-xl p-3 text-sm text-slate-300 placeholder-slate-600 leading-6 focus:outline-none focus:border-yellow-500/30 transition resize-none custom-scrollbar min-h-0" />
+                                            </div>
+                                            <div className="flex-1 flex flex-col min-h-0">
+                                                <label className="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1 flex items-center gap-1.5">
+                                                    <TrendingUp size={13} /> Hành trình phát triển
+                                                </label>
+                                                <textarea name="development" value={formData.development} onChange={handleChange} placeholder="Quá trình thay đổi, trưởng thành..." className="flex-1 w-full bg-slate-950/40 border border-white/5 rounded-xl p-3 text-sm text-slate-300 placeholder-slate-600 leading-6 focus:outline-none focus:border-indigo-500/30 transition resize-none custom-scrollbar min-h-0" />
+                                            </div>
+                                        </div>
                                     </section>
 
-                                    <section className="lg:col-span-4 rounded-2xl border border-cyan-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[415px]">
+                                    {/* TIỂU SỬ */}
+                                    <section className="lg:col-span-4 rounded-2xl border border-cyan-500/10 bg-slate-950/30 p-5 shadow-sm flex flex-col h-[520px]">
                                         <div className="mb-4 flex items-center gap-3 border-b border-white/10 pb-3 shrink-0">
                                             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10">
                                                 <BookOpen size={18} className="text-cyan-400" />
@@ -314,7 +385,8 @@ export default function CreateCharacterPage() {
                                         <textarea name="background" value={formData.background} onChange={handleChange} placeholder="Hoàn cảnh lịch sử đời tư..." className="flex-1 w-full bg-slate-950/40 border border-white/5 rounded-xl p-4 text-sm text-slate-300 placeholder-slate-600 leading-7 focus:outline-none focus:border-cyan-500/30 transition resize-none custom-scrollbar min-h-0" />
                                     </section>
 
-                                    <section className="lg:col-span-4 rounded-2xl border border-white/10 bg-slate-900/30 backdrop-blur-xl shadow-xl flex flex-col h-[415px] overflow-hidden">
+                                    {/* MỐI QUAN HỆ */}
+                                    <section className="lg:col-span-4 rounded-2xl border border-white/10 bg-slate-900/30 backdrop-blur-xl shadow-xl flex flex-col h-[520px] overflow-hidden">
                                         <div className="mb-2 flex items-center justify-between border-b border-white/10 p-5 pb-3 shrink-0">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10">
@@ -335,24 +407,28 @@ export default function CreateCharacterPage() {
                                                 <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-white/10 text-sm text-slate-500 italic py-12">Chưa có mối quan hệ nào.</div>
                                             ) : (
                                                 <div className="flex flex-col gap-2.5 w-full">
-                                                    {formData.relationship.map((item) => (
-                                                        <div key={item.id} className="group flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.02] px-5 py-3 transition-all duration-300 hover:border-blue-500/30 hover:bg-blue-500/[0.04]">
-                                                            <div className="flex items-center gap-4 min-w-0">
-                                                                <div className="min-w-0">
-                                                                    <h3 className="text-sm font-semibold text-white truncate">{item.name}</h3>
-                                                                    <p className="mt-0.5 text-xs text-slate-400 truncate">{item.relationType}</p>
+                                                    {formData.relationship.map((item, index) => {
+                                                        const relId = item.characterId || item.id;
+                                                        return (
+                                                            <div key={index} className="group flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.02] px-4 py-3 transition-all duration-300 hover:border-blue-500/30 hover:bg-blue-500/[0.04]">
+                                                                <div className="flex items-center gap-3 min-w-0">
+                                                                    <div className="min-w-0">
+                                                                        <h3 className="text-sm font-semibold text-white truncate">{item.name || "Nhân vật liên kết"}</h3>
+                                                                        <p className="mt-0.5 text-xs text-slate-400 truncate">{item.relationType}</p>
+                                                                        {item.description && <p className="mt-1 text-[11px] text-slate-500 line-clamp-1">{item.description}</p>}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 shrink-0">
+                                                                    <button type="button" onClick={() => handleEditRelationshipClick(item)} className="flex items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 p-2 text-blue-400 transition hover:border-blue-500/40 hover:bg-blue-500/20">
+                                                                        <Pencil size={14} />
+                                                                    </button>
+                                                                    <button type="button" onClick={() => handleDeleteRelationship(relId)} className="flex items-center justify-center rounded-xl border border-red-500/20 bg-red-500/10 p-2 text-red-400 transition hover:border-red-500/40 hover:bg-red-500/20">
+                                                                        <Trash2 size={14} />
+                                                                    </button>
                                                                 </div>
                                                             </div>
-                                                            <div className="flex items-center gap-2 shrink-0">
-                                                                <button type="button" onClick={() => handleEditRelationshipClick(item)} className="flex items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 p-2 text-blue-400 transition hover:border-blue-500/40 hover:bg-blue-500/20">
-                                                                    <Pencil size={14} />
-                                                                </button>
-                                                                <button type="button" onClick={() => handleDeleteRelationship(item.id)} className="flex items-center justify-center rounded-xl border border-red-500/20 bg-red-500/10 p-2 text-red-400 transition hover:border-red-500/40 hover:bg-red-500/20">
-                                                                    <Trash2 size={14} />
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </div>
@@ -373,7 +449,7 @@ export default function CreateCharacterPage() {
                             onClick={() => {
                                 setIsModalOpen(false);
                                 setEditingRelationId(null);
-                                setModalData({ selectedCharId: "", relationType: "Đồng minh" });
+                                setModalData({ selectedCharId: "", relationType: "Đồng minh", description: "" });
                             }}
                             className="absolute top-4 right-4 text-slate-400 hover:text-white transition"
                         >
@@ -404,6 +480,11 @@ export default function CreateCharacterPage() {
                                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Loại quan hệ</label>
                                 <input type="text" name="relationType" value={modalData.relationType} onChange={handleModalChange} placeholder="Ví dụ: Đồng minh, Kẻ thù..." className="w-full bg-slate-950/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition placeholder-slate-600" />
                             </div>
+
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Mô tả mối quan hệ (Tùy chọn)</label>
+                                <input type="text" name="description" value={modalData.description} onChange={handleModalChange} placeholder="Chi tiết thêm về mối quan hệ..." className="w-full bg-slate-950/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition placeholder-slate-600" />
+                            </div>
                         </div>
 
                         <div className="flex gap-3 justify-end border-t border-white/10 pt-4 mt-2">
@@ -412,7 +493,7 @@ export default function CreateCharacterPage() {
                                 onClick={() => {
                                     setIsModalOpen(false);
                                     setEditingRelationId(null);
-                                    setModalData({ selectedCharId: "", relationType: "Đồng minh" });
+                                    setModalData({ selectedCharId: "", relationType: "Đồng minh", description: "" });
                                 }}
                                 className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-white/10 transition"
                             >
