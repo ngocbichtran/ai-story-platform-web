@@ -27,11 +27,11 @@ export default function DerivativeStoryPage() {
     const [aiPlansResult, setAiPlansResult] = useState(null);
 
     const [plans, setPlans] = useState([
-        { chapterNumber: 1, title: "Chương 1", summary: "Quá khứ gắn liền với những cuộc phiêu lưu xuyên không gian..." },
-        { chapterNumber: 2, title: "Chương 2", summary: "Hành trình thức tỉnh sức mạnh ẩn giấu sau biến cố..." },
-        { chapterNumber: 3, title: "Chương 3", summary: "Cuộc đối đầu định mệnh tại vùng đất cấm..." },
-        { chapterNumber: 4, title: "Chương 4", summary: "Sự phản bội từ người đồng hành tin tưởng nhất..." },
-        { chapterNumber: 5, title: "Chương 5", summary: "Bước ngoặt cuối cùng và sự tái định hình trật tự thế giới..." },
+        { chapterNumber: 1, title: "Chương 1", summary: "Chưa có nội dung..." },
+        { chapterNumber: 2, title: "Chương 2", summary: "Chưa có nội dung..." },
+        { chapterNumber: 3, title: "Chương 3", summary: "Chưa có nội dung..." },
+        { chapterNumber: 4, title: "Chương 4", summary: "Chưa có nội dung..." },
+        { chapterNumber: 5, title: "Chương 5", summary: "Chưa có nội dung..." },
     ]);
 
     const [fullCharacterData, setFullCharacterData] = useState({});
