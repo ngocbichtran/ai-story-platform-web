@@ -234,7 +234,6 @@ export default function DerivativeStoryPage() {
             handleSuggestChapterPlans();
         }
     };
-
     const handleSuggestChapterPlans = async () => {
         if (!selectedStory) return toast.error("Thiếu thông tin bộ truyện!");
 
@@ -265,7 +264,6 @@ export default function DerivativeStoryPage() {
             setCountdown(20);
         }
     };
-
     // Khi ấn chấp nhận mới truyền dữ liệu AI sang tab/cột bên phải (charEditForm)
     const handleAcceptAiResult = async () => {
         if (step === 2) {
