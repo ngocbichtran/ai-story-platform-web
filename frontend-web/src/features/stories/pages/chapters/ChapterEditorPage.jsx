@@ -26,6 +26,12 @@ export default function ChapterEditorPage() {
     // CONTENT State
     const [content, setContent] = useState("");
     const [outlineAIResult, setOutlineAIResult] = useState("");
+
+    // 🌟 State phân biệt chế độ AI: true = Kiểm tra chính tả (có highlight), false = Gợi ý nội dung (văn bản thường)
+    const [isSpellCheckMode, setIsSpellCheckMode] = useState(false);
+    const [highlightedAIElements, setHighlightedAIElements] = useState([]);
+    const [detectedErrorCount, setDetectedErrorCount] = useState(0);
+
     const [versionHistory, setVersionHistory] = useState([]);
     const [previewVersion, setPreviewVersion] = useState(null);
     const [restoredVersionId, setRestoredVersionId] = useState(null);
@@ -41,6 +47,79 @@ export default function ChapterEditorPage() {
     const autoSaveTimerRef = useRef(null);
 
     const wordCount = content.trim() ? content.trim().split(/\s+/).filter(Boolean).length : 0;
+
+    // 🌟 Thuật toán Diff đếm đúng lỗi thay thế/sai từ (Không đếm nhầm do lệch vị trí)
+    const buildHighlightedDiff = (original = "", polished = "") => {
+        if (!original || !polished) {
+            setHighlightedAIElements([<span key="default">{polished}</span>]);
+            setDetectedErrorCount(0);
+            return;
+        }
+
+        const origWords = original.trim().split(/\s+/);
+        const newWords = polished.trim().split(/\s+/);
+
+        // Chuyển tập hợp từ mới sang Set để tra cứu nhanh xem từ đó có tồn tại hay không
+        const newWordsSet = new Set(newWords);
+
+        const spans = [];
+        let errorCount = 0;
+        const maxLen = Math.max(newWords.length, origWords.length);
+
+        for (let i = 0; i < maxLen; i++) {
+            const origWord = i < origWords.length ? origWords[i] : "";
+            const newWord = i < newWords.length ? newWords[i] : "";
+
+            // Kiểm tra xem từ cũ có bị thay thế / viết sai không (nếu từ cũ tồn tại ở mảng mới nhưng khác vị trí hoặc bị đổi)
+            const isReplacedOrWrong = origWord && !newWordsSet.has(origWord);
+
+            if (isReplacedOrWrong) {
+                errorCount++; // 🟢 Chỉ đếm khi thực sự là từ bị thay thế/sai
+                spans.push(
+                    <span
+                        key={`del-${i}`}
+                        style={{
+                            color: "#ff5252",
+                            textDecoration: "line-through",
+                            backgroundColor: "rgba(255, 82, 82, 0.15)",
+                            padding: "0 2px",
+                            borderRadius: "3px",
+                        }}
+                    >
+                        {origWord}
+                    </span>
+                );
+                spans.push(<span key={`sp1-${i}`}> </span>);
+            }
+
+            if (newWord) {
+                // Nếu là từ mới được thêm/sửa vào
+                const isAddedOrChanged = !origWords.includes(newWord);
+
+                spans.push(
+                    <span
+                        key={`ins-${i}`}
+                        style={{
+                            color: isAddedOrChanged ? "#69f0ae" : "rgba(255, 255, 255, 0.7)",
+                            fontWeight: isAddedOrChanged ? "bold" : "normal",
+                            backgroundColor: isAddedOrChanged ? "rgba(105, 240, 174, 0.15)" : "transparent",
+                            padding: isAddedOrChanged ? "0 2px" : "0",
+                            borderRadius: "3px",
+                        }}
+                    >
+                        {newWord}
+                    </span>
+                );
+            }
+
+            if (i < maxLen - 1) {
+                spans.push(<span key={`space-${i}`}> </span>);
+            }
+        }
+
+        setHighlightedAIElements(spans.length === 0 ? [<span key="def">{polished}</span>] : spans);
+        setDetectedErrorCount(errorCount);
+    };
 
     // =========================================================================
     // 1. API: TẢI THÔNG TIN CHƯƠNG TỪ BACKEND
@@ -239,7 +318,7 @@ export default function ChapterEditorPage() {
     };
 
     // =========================================================================
-    // AI KIỂM TRA CHÍNH TẢ
+    // AI KIỂM TRA CHÍNH TẢ (Có bật chế độ Highlight Diff)
     // =========================================================================
     const handleAIEnhance = async () => {
         if (!storyId || !chapterNumber) return;
@@ -247,6 +326,7 @@ export default function ChapterEditorPage() {
         try {
             setIsAILoading(true);
             setShowAISidebar(true);
+            setIsSpellCheckMode(true); // 🟢 Bật cờ Highlight cho chính tả
 
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -280,9 +360,13 @@ export default function ChapterEditorPage() {
                 };
 
                 polishedContent = extractContent(response.data);
-                const finalResultText = polishedContent.trim() !== "" ? polishedContent.trim() : "AI đã quét xong và không phát hiện lỗi chính tả cần điều chỉnh.";
+                const finalResultText = polishedContent.trim() !== "" ? polishedContent.trim() : content;
 
                 setOutlineAIResult(finalResultText);
+
+                // Gọi hàm sinh Highlight so sánh
+                buildHighlightedDiff(content, finalResultText);
+
                 toast.success("Sửa chính tả thành công!");
             } else {
                 toast.error(response.data?.message || "Không thể kiểm tra chính tả.");
@@ -296,7 +380,7 @@ export default function ChapterEditorPage() {
     };
 
     // =========================================================================
-    // AI GỢI Ý NỘI DUNG CHƯƠNG (Đã đồng bộ dùng API_BASE_URL)
+    // AI GỢI Ý NỘI DUNG CHƯƠNG (KHÔNG DÙNG HIGHLIGHT - HIỂN THỊ VĂN BẢN THƯỜNG)
     // =========================================================================
     const handlePlotSuggest = async () => {
         if (!storyId || !chapterNumber) return;
@@ -306,12 +390,9 @@ export default function ChapterEditorPage() {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            // 🟢 Bước 1: Kiểm tra nhanh phía Frontend xem đã có kế hoạch cho chương hiện tại hay chưa
             try {
                 const planRes = await axios.get(`${API_BASE_URL}/chapterPlan/stories/${storyId}`, config);
                 const planList = planRes.data?.success ? (Array.isArray(planRes.data.data) ? planRes.data.data : []) : [];
-
-                // Tìm xem có kế hoạch của chương hiện tại chưa
                 const currentChapterPlan = planList.find((p) => Number(p.chapterNumber) === Number(chapterNumber));
 
                 if (planList.length === 0 || !currentChapterPlan || (!currentChapterPlan.summary && !currentChapterPlan.purpose && !currentChapterPlan.conflict && !currentChapterPlan.endingHook)) {
@@ -321,10 +402,10 @@ export default function ChapterEditorPage() {
                 }
             } catch (planErr) {
                 console.error("Lỗi khi kiểm tra kế hoạch chương:", planErr);
-                // Nếu kiểm tra phụ này lỗi, ta vẫn có thể bỏ qua và đẩy thẳng xuống Backend để Backend kiểm tra toàn diện bằng các "vệ binh" Outline, Characters,...
             }
 
             setShowAISidebar(true);
+            setIsSpellCheckMode(false); // 🟢 Tắt cờ Highlight, hiển thị văn bản bình thường
 
             const payload = {
                 storyId: Number(storyId),
@@ -332,14 +413,15 @@ export default function ChapterEditorPage() {
                 currentContent: content || "",
             };
 
-            // Gọi API Backend (Backend sẽ kiểm tra tiếp Outline, Nhân vật, Nội dung chương trước...)
             const response = await axios.post(`${API_BASE_URL}/chapters/ai/${chapterNumber}/plot-suggestion`, payload, config);
 
             if (response.data?.success === true) {
                 const suggestionText = response.data?.data?.content;
 
                 if (typeof suggestionText === "string" && suggestionText.trim()) {
-                    setOutlineAIResult(suggestionText.trim());
+                    const finalResultText = suggestionText.trim();
+                    setOutlineAIResult(finalResultText);
+
                     toast.success("Gợi ý nội dung thành công!");
                 } else {
                     toast.error("AI không trả về nội dung.");
@@ -349,7 +431,6 @@ export default function ChapterEditorPage() {
             }
         } catch (error) {
             console.error("❌ Lỗi gợi ý nội dung chương:", error);
-            // 🟢 Toast này sẽ lấy chính xác message lỗi cụ thể từ Backend trả về (Ví dụ: Thiếu Outline, Thiếu Nhân vật, Chương trước trống...)
             toast.error(error.response?.data?.message || "Không thể kết nối với hệ thống AI.");
         } finally {
             setIsPlotLoading(false);
@@ -437,11 +518,12 @@ export default function ChapterEditorPage() {
                 </div>
 
                 {/* CỘT TRÁI: KHUNG TRỢ LÝ AI */}
-                <div className={`h-full flex flex-col min-h-0 transition-all duration-300 ease-in-out ${showAISidebar ? "w-[380px] opacity-100" : "w-0 opacity-0 pointer-events-none -mr-6"}`}>
+                <div className={`h-full flex flex-col min-h-0 transition-all duration-300 ease-in-out ${showAISidebar ? "w-[420px] opacity-100" : "w-0 opacity-0 pointer-events-none -mr-6"}`}>
                     <div className="flex-1 h-full rounded-3xl border border-white/5 bg-[#10151E]/60 shadow-xl overflow-y-auto custom-scroll flex flex-col">
                         <div className="flex items-center justify-between border-b border-white/5 px-6 py-4 select-none flex-none bg-blue-500/5">
                             <div className="flex items-center gap-2 text-xs font-bold text-blue-400 uppercase tracking-widest">
-                                <span>Gợi ý từ trợ lý BaoStory</span>
+                                <Sparkles size={14} />
+                                <span>{isSpellCheckMode ? "Kết quả kiểm tra chính tả" : "Gợi ý nội dung từ trợ lý"}</span>
                             </div>
 
                             {outlineAIResult && (
@@ -459,8 +541,24 @@ export default function ChapterEditorPage() {
                             )}
                         </div>
 
-                        <div className="flex-1 px-6 py-5">
-                            <textarea readOnly value={outlineAIResult} placeholder="Nội dung tối ưu từ AI hiển thị ở đây..." className="w-full min-h-full bg-transparent text-slate-400 text-[15px] leading-7 font-normal resize-none border-none focus:ring-0 p-0 focus:outline-none cursor-default selection:bg-blue-500/20" />
+                        {/* 🌟 CHỈ HIỂN THỊ THÔNG BÁO HIGHLIGHT KHI Ở CHẾ ĐỘ KIỂM TRA CHÍNH TẢ */}
+                        {isSpellCheckMode && outlineAIResult && (
+                            <div className={`mx-6 mt-4 px-3 py-2 rounded-lg border text-xs font-medium flex items-center gap-2 ${detectedErrorCount > 0 ? "bg-purple-500/10 border-purple-500/20 text-purple-300" : "bg-green-500/10 border-green-500/20 text-green-300"}`}>
+                                {detectedErrorCount > 0 ? (
+                                    <>
+                                        <Sparkles size={14} /> Phát hiện {detectedErrorCount} điểm sửa đổi / lỗi chính tả.
+                                    </>
+                                ) : (
+                                    <>
+                                        <Check size={14} /> Tuyệt vời! Không phát hiện lỗi chính tả nào.
+                                    </>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="flex-1 px-6 py-4">
+                            {/* 🌟 NẾU LÀ CHÍNH TẢ THÌ DÙNG HIGHLIGHT, NẾU LÀ GỢI Ý NỘI DUNG THÌ HIỆN TEXT THƯỜNG */}
+                            {outlineAIResult ? isSpellCheckMode ? <div className="w-full min-h-full bg-transparent text-slate-200 text-[15px] leading-7 font-normal whitespace-pre-wrap selection:bg-blue-500/20">{highlightedAIElements}</div> : <textarea readOnly value={outlineAIResult} className="w-full min-h-full bg-transparent text-slate-300 text-[15px] leading-7 font-normal resize-none border-none focus:ring-0 p-0 focus:outline-none cursor-default selection:bg-blue-500/20" /> : <p className="text-slate-500 text-sm italic">Nội dung tối ưu từ AI sẽ hiển thị ở đây...</p>}
                         </div>
                     </div>
                 </div>

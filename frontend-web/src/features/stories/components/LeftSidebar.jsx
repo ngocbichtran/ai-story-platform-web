@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { ArrowLeft, BookOpen, Layers, Users, FolderHeart, Plus, ScrollText, Clapperboard, Loader2, Trash2, Download } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { ArrowLeft, BookOpen, Layers, Users, FolderHeart, Plus, ScrollText, Clapperboard, Loader2, Trash2 } from "lucide-react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -33,14 +33,16 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
         const currentPath = location.pathname;
         if (currentPath.includes("/editor/chapter/")) {
             const match = currentPath.match(/\/editor\/chapter\/(\d+)/);
-            setActiveChapter(match ? Number(match[1]) : null);
-            setActiveNav("");
+            const chNum = match ? Number(match[1]) : null;
+            setActiveChapter((prev) => (prev !== chNum ? chNum : prev));
+            setActiveNav((prev) => (prev !== "" ? "" : prev));
         } else {
-            setActiveChapter(null);
+            setActiveChapter((prev) => (prev !== null ? null : prev));
             const matchedNav = navItems.find((item) => currentPath.endsWith(item.id));
-            setActiveNav(matchedNav ? matchedNav.id : currentPath.endsWith("/editor") ? "overview" : "");
+            const newNav = matchedNav ? matchedNav.id : currentPath.endsWith("/editor") ? "overview" : "";
+            setActiveNav((prev) => (prev !== newNav ? newNav : prev));
         }
-    }, [location.pathname]);
+    }, [location.pathname, storyId]);
 
     const fetchData = async () => {
         if (!storyId) return;
@@ -48,11 +50,13 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             setLoading(true);
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
+
             const [storyRes, chaptersRes] = await Promise.all([axios.get(`https://api.baostory.fun/api/stories/${storyId}`, config), axios.get(`https://api.baostory.fun/api/chapters/${storyId}/chapters`, config)]);
+
             if (storyRes.data?.success) setStory(storyRes.data.data);
             if (chaptersRes.data?.success) setChaptersList(chaptersRes.data.data || []);
         } catch (error) {
-            toast.error("Không thể tải danh mục tác phẩm.");
+            console.error("Lỗi tải danh mục:", error);
         } finally {
             setLoading(false);
         }
@@ -63,51 +67,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
     }, [storyId]);
 
     // =========================================================================
-    // XỬ LÝ IMPORT (DÙNG DOMPARSER BÓC TÁCH HTML)
-    // =========================================================================
-    const handleImportChapters = async (file) => {
-        try {
-            toast.loading("Đang phân tích file...", { id: "importing" });
-            const htmlText = await file.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlText, "text/html");
-            const chapterHeaders = Array.from(doc.querySelectorAll("h2"));
-
-            if (chapterHeaders.length === 0) {
-                toast.dismiss("importing");
-                toast.error("Không tìm thấy cấu trúc chương (thẻ h2) trong file!");
-                return;
-            }
-
-            const token = localStorage.getItem("token");
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-
-            for (const header of chapterHeaders) {
-                const titleText = header.innerText;
-                const match = titleText.match(/Chương\s+(\d+)/i);
-                const chapterNumber = match ? Number(match[1]) : 1;
-
-                let content = "";
-                let nextNode = header.nextElementSibling;
-                while (nextNode && nextNode.tagName !== "H2") {
-                    if (nextNode.tagName === "P") content += nextNode.innerText + "\n";
-                    nextNode = nextNode.nextElementSibling;
-                }
-
-                await axios.post(`https://api.baostory.fun/api/chapters/${storyId}/chapters`, { chapterNumber, title: titleText, content: content.trim() }, config);
-            }
-
-            toast.dismiss("importing");
-            toast.success("Import thành công!");
-            fetchData();
-        } catch (err) {
-            toast.dismiss("importing");
-            toast.error("Lỗi khi đọc file hoặc kết nối server.");
-        }
-    };
-
-    // =========================================================================
-    // CÁC HÀM XỬ LÝ CHƯƠNG THÔNG THƯỜNG
+    // XỬ LÝ TẠO MỚI & XÓA CHƯƠNG
     // =========================================================================
     const handleCreateChapter = async () => {
         if (!chapterTitle.trim() || !chapterNumberInput) return toast.error("Vui lòng nhập đủ thông tin!");
@@ -115,7 +75,16 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             setIsCreating(true);
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const res = await axios.post(`https://api.baostory.fun/api/chapters/${storyId}/chapters`, { chapterNumber: Number(chapterNumberInput), title: chapterTitle.trim() }, config);
+
+            const res = await axios.post(
+                `https://api.baostory.fun/api/chapters/${storyId}/chapters`,
+                {
+                    chapterNumber: Number(chapterNumberInput),
+                    title: chapterTitle.trim(),
+                },
+                config
+            );
+
             if (res.data.success) {
                 toast.success("Tạo chương thành công!");
                 setShowCreateChapterModal(false);
@@ -123,7 +92,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
                 navigate(`/stories/${storyId}/editor/chapter/${chapterNumberInput}`);
             }
         } catch (error) {
-            toast.error("Khởi tạo chương thất bại.");
+            toast.error(error.response?.data?.message || "Khởi tạo chương thất bại.");
         } finally {
             setIsCreating(false);
         }
@@ -135,6 +104,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
         try {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
+
             await axios.delete(`https://api.baostory.fun/api/chapters/${storyId}/chapters/${targetChapterNumber}`, config);
             toast.success("Đã xóa!");
             fetchData();
@@ -173,8 +143,9 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
                 <div className="flex-1 overflow-y-auto custom-scroll space-y-1">
                     {[...chaptersList]
                         .sort((a, b) => a.chapterNumber - b.chapterNumber)
-                        .map((ch) => (
-                            <div key={ch.chapterNumber} className="group flex items-center">
+                        .map((ch, index) => (
+                            // 🟢 ĐÃ FIX: Kết hợp chapterNumber và index để tạo key độc nhất, tránh lỗi trùng key rendering
+                            <div key={`${ch.chapterNumber}-${index}`} className="group flex items-center">
                                 <button onClick={() => navigate(`/stories/${storyId}/editor/chapter/${ch.chapterNumber}`)} className={`w-full text-left px-3 py-2 rounded-xl text-xs ${activeChapter === ch.chapterNumber ? "bg-[#1d2433] text-blue-300 font-bold" : "text-[#c1c6d5] hover:bg-[#181d29]"}`}>
                                     {ch.title ? `Chương ${ch.chapterNumber}: ${ch.title}` : `Chương ${ch.chapterNumber}`}
                                 </button>
@@ -186,7 +157,6 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
                 </div>
             </div>
 
-            {/* NÚT TẠO MỚI & IMPORT CHIA ĐÔI */}
             <div className="flex gap-2 flex-none">
                 <button
                     onClick={() => {
@@ -199,21 +169,16 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
                 >
                     <Plus size={16} /> Tạo mới
                 </button>
-                <label className="flex-1 h-11 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border border-white/5">
-                    <ScrollText size={16} /> Import
-                    <input type="file" accept=".txt, .doc, .docx, .html" className="hidden" onChange={(e) => e.target.files[0] && handleImportChapters(e.target.files[0])} />
-                </label>
             </div>
 
-            {/* MODAL TẠO CHƯƠNG */}
             {showCreateChapterModal && (
                 <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
                     <div className="w-[400px] rounded-3xl border border-white/10 bg-[#0B1120] p-6 shadow-2xl">
                         <h2 className="text-lg font-bold text-white mb-4">Khởi tạo chương mới</h2>
 
                         <div className="mb-3">
-                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Số thứ tự chương (Tự động)</label>
-                            <input type="number" readOnly value={chapterNumberInput} className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-slate-400 cursor-not-allowed select-none outline-none" />
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Số thứ tự chương</label>
+                            <input type="number" readOnly value={chapterNumberInput} className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-slate-400 cursor-not-allowed outline-none" />
                         </div>
 
                         <div className="mb-4">
