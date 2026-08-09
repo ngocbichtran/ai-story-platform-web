@@ -85,7 +85,7 @@ const LoginPage = () => {
                         </div>
                     </div>
 
-                    {/* 🌟 NÚT TẢI FILE APK CHO ANDROID */}
+                    {/* NÚT TẢI FILE APK CHO ANDROID */}
                     <div>
                         <a href="https://apk.baostory.fun/app-release.apk" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 px-6 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-bold shadow-lg shadow-purple-600/20 border border-purple-400/30 transition-all duration-300 active:scale-95 group/apk">
                             <Download className="w-4 h-4 group-hover/apk:translate-y-0.5 transition-transform" />
