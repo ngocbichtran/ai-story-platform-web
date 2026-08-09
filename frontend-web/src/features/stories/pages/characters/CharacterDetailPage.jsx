@@ -28,7 +28,7 @@ export default function CharacterDetailPage() {
                     setCharacter(res.data.data);
                 }
             } catch (err) {
-                console.error("Lỗi tải chi tiết nhân vật:", err);
+                console.error("Lỗi khi tải chi tiết nhân vật:", err);
                 toast.error("Không thể tải thông tin chi tiết nhân vật.");
             } finally {
                 setLoading(false);

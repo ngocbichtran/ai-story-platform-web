@@ -381,7 +381,7 @@ export default function DerivativeStoryPage() {
             navigate("/stories");
         } catch (err) {
             toast.dismiss();
-            console.error("Lỗi tạo truyện phái sinh:", err.response?.data || err.message);
+            console.error("Lỗi khi tạo truyện phái sinh:", err.response?.data || err.message);
             toast.error(err.response?.data?.message || "Lỗi hệ thống khi tạo truyện phái sinh.");
         } finally {
             setIsLoading(false);

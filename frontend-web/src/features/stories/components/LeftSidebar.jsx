@@ -144,7 +144,6 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
                     {[...chaptersList]
                         .sort((a, b) => a.chapterNumber - b.chapterNumber)
                         .map((ch, index) => (
-                            // 🟢 ĐÃ FIX: Kết hợp chapterNumber và index để tạo key độc nhất, tránh lỗi trùng key rendering
                             <div key={`${ch.chapterNumber}-${index}`} className="group flex items-center">
                                 <button onClick={() => navigate(`/stories/${storyId}/editor/chapter/${ch.chapterNumber}`)} className={`w-full text-left px-3 py-2 rounded-xl text-xs ${activeChapter === ch.chapterNumber ? "bg-[#1d2433] text-blue-300 font-bold" : "text-[#c1c6d5] hover:bg-[#181d29]"}`}>
                                     {ch.title ? `Chương ${ch.chapterNumber}: ${ch.title}` : `Chương ${ch.chapterNumber}`}
