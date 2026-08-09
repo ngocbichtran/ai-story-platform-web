@@ -1,154 +1,274 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Save, PenSquare, Plus, Trash2, BookOpen, Clapperboard, Eye, Loader2 } from "lucide-react";
+import { Save, PenSquare, Plus, Trash2, BookOpen, Loader2, Sparkles, Check } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
+const N8N_BASE_URL = "https://n8n.baostory.fun";
 
 export default function ChapterPlanEditor() {
     const { storyId } = useParams();
     const navigate = useNavigate();
 
     // =====================================================
-    // STATES CHO DỮ LIỆU API & LOADING
+    // STATES
     // =====================================================
-    const [plans, setPlans] = useState([]); // Danh sách kế hoạch chương
-    const [scenes, setScenes] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [loadingScenes, setLoadingScenes] = useState(false);
 
-    // STATE QUẢN LÝ UI
-    const [selectedPlanId, setSelectedPlanId] = useState(null); // ID của Kế hoạch đang chọn (_id)
-    const [activeTab, setActiveTab] = useState("plan");
+    const [plans, setPlans] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isAILoading, setIsAILoading] = useState(false);
+    const [isCurrentAILoading, setIsCurrentAILoading] = useState(false);
+    const [selectedPlanId, setSelectedPlanId] = useState(null);
     const [isEditingPlan, setIsEditingPlan] = useState(false);
 
-    // State riêng cho Scene
-    const [selectedScene, setSelectedScene] = useState(null);
-    const [isEditingScene, setIsEditingScene] = useState(false);
+    // State lưu nội dung do AI trả về để hiển thị ở cột riêng biệt
+    const [aiSuggestedSummary, setAiSuggestedSummary] = useState("");
 
-    // Form tạm để chỉnh sửa Kế hoạch chương
-    const [planForm, setPlanForm] = useState({ chapterNumber: 1, versionName: "", summary: "" });
-    const [sceneForm, setSceneForm] = useState({ title: "", summary: "", content: "", sceneOrder: 1 });
+    const [planForm, setPlanForm] = useState({
+        chapterNumber: 1,
+        versionName: "",
+        summary: "",
+    });
 
     // =====================================================
-    // 1. LẤY DANH SÁCH KẾ HOẠCH CHƯƠNG THEO STORY ID
+    // AXIOS CONFIG
     // =====================================================
-    const fetchPlans = useCallback(async () => {
+
+    const getAuthConfig = () => {
+        const token = localStorage.getItem("token");
+        return {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+        };
+    };
+
+    const extractChapterPlan = (rawResponse) => {
         try {
-            setLoading(true);
-            const token = localStorage.getItem("token");
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-
-            // Gọi API lấy danh sách kế hoạch chương từ collection chapter_plans
-            const res = await axios.get(`https://api.baostory.fun/api/chapterPlan/stories/${storyId}`, config);
-
-            if (res.data.success) {
-                const planList = res.data.data || [];
-                setPlans(planList);
-
-                if (planList.length > 0 && !selectedPlanId) {
-                    setSelectedPlanId(planList[0]._id);
+            let data = rawResponse;
+            if (typeof data === "string") {
+                const trimmed = data.trim();
+                if (!trimmed) return null;
+                try {
+                    data = JSON.parse(trimmed);
+                } catch (parseError) {
+                    return null;
                 }
             }
+            if (data && typeof data === "object" && !Array.isArray(data) && data.data !== undefined) {
+                data = data.data;
+            }
+            if (Array.isArray(data)) {
+                if (data.length === 0) return null;
+                data = data[0];
+            }
+            if (data && typeof data === "object" && !Array.isArray(data) && data.data !== undefined) {
+                data = data.data;
+                if (Array.isArray(data)) data = data[0];
+            }
+            if (data && typeof data === "object" && data.chapterPlan !== undefined) {
+                data = data.chapterPlan;
+            }
+            if (Array.isArray(data)) data = data[0];
+            if (!data || typeof data !== "object") return null;
+            return data;
+        } catch (error) {
+            console.error("❌ Lỗi extract chapterPlan:", error);
+            return null;
+        }
+    };
+
+    const buildChapterSummary = (chapterPlan) => {
+        if (!chapterPlan) return "";
+        if (typeof chapterPlan.summary === "string" && chapterPlan.summary.trim()) {
+            return chapterPlan.summary.trim();
+        }
+        if (typeof chapterPlan.content === "string" && chapterPlan.content.trim()) {
+            return chapterPlan.content.trim();
+        }
+        const parts = [];
+        if (typeof chapterPlan.purpose === "string" && chapterPlan.purpose.trim()) {
+            parts.push(`Mục tiêu: ${chapterPlan.purpose.trim()}`);
+        }
+        if (typeof chapterPlan.conflict === "string" && chapterPlan.conflict.trim()) {
+            parts.push(`Xung đột: ${chapterPlan.conflict.trim()}`);
+        }
+        if (typeof chapterPlan.endingHook === "string" && chapterPlan.endingHook.trim()) {
+            parts.push(`Điểm móc: ${chapterPlan.endingHook.trim()}`);
+        }
+        return parts.join("\n\n").trim();
+    };
+
+    const getChapterTitle = (chapterPlan, chapterNumber) => {
+        if (!chapterPlan) return `Chương ${chapterNumber} (Gợi ý AI)`;
+        if (typeof chapterPlan.title === "string" && chapterPlan.title.trim()) {
+            return chapterPlan.title.trim();
+        }
+        if (typeof chapterPlan.versionName === "string" && chapterPlan.versionName.trim()) {
+            return chapterPlan.versionName.trim();
+        }
+        return `Chương ${chapterNumber} (Gợi ý AI)`;
+    };
+
+    // =====================================================
+    // 1. LẤY DANH SÁCH KẾ HOẠCH CHƯƠNG
+    // =====================================================
+
+    const fetchPlans = useCallback(async () => {
+        if (!storyId) return;
+        try {
+            setLoading(true);
+            const config = getAuthConfig();
+            const res = await axios.get(`https://api.baostory.fun/api/chapterPlan/stories/${storyId}`, config);
+
+            if (res.data?.success) {
+                const planList = Array.isArray(res.data.data) ? res.data.data : [];
+                setPlans(planList);
+
+                if (planList.length > 0) {
+                    setSelectedPlanId((currentSelectedId) => {
+                        if (currentSelectedId && planList.some((plan) => plan._id === currentSelectedId)) {
+                            return currentSelectedId;
+                        }
+                        return planList[0]._id;
+                    });
+                } else {
+                    setSelectedPlanId(null);
+                }
+            } else {
+                setPlans([]);
+            }
         } catch (err) {
-            console.error("Lỗi tải danh sách kế hoạch chương:", err);
-            toast.error("Không thể tải danh sách kế hoạch.");
+            console.error("❌ Lỗi tải danh sách kế hoạch chương:", err.response?.data || err);
+            toast.error(err.response?.data?.message || "Không thể tải danh sách kế hoạch.");
         } finally {
             setLoading(false);
         }
-    }, [storyId, selectedPlanId]);
+    }, [storyId]);
 
     useEffect(() => {
         if (storyId) fetchPlans();
     }, [storyId, fetchPlans]);
 
-    // =====================================================
-    // 2. GỌI API LẤY PHÂN CẢNH THEO PLAN ID / CHAPTER ID
-    // =====================================================
-    const fetchScenes = useCallback(async () => {
-        if (!selectedPlanId) return;
-        try {
-            setLoadingScenes(true);
-            const token = localStorage.getItem("token");
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-
-            const res = await axios.get(`https://api.baostory.fun/api/scenes/${selectedPlanId}`, config);
-            if (res.data.success) {
-                setScenes(res.data.data || []);
-            }
-        } catch (err) {
-            console.error("Lỗi tải phân cảnh:", err);
-            toast.error("Không thể tải phân cảnh.");
-        } finally {
-            setLoadingScenes(false);
-        }
-    }, [selectedPlanId]);
-
-    useEffect(() => {
-        if (selectedPlanId) {
-            fetchScenes();
-            setSelectedScene(null);
-            setIsEditingScene(false);
-            setIsEditingPlan(false);
-        }
-    }, [selectedPlanId, fetchScenes]);
-
-    // =====================================================
-    // DỮ LIỆU HIỆN TẠI
-    // =====================================================
     const currentPlan = plans.find((p) => p._id === selectedPlanId) || null;
-    const currentScenes = [...scenes].sort((a, b) => a.sceneOrder - b.sceneOrder);
 
-    // Đồng bộ dữ liệu kế hoạch vào form
     useEffect(() => {
         if (currentPlan) {
             setPlanForm({
                 chapterNumber: currentPlan.chapterNumber || 1,
                 versionName: currentPlan.versionName || currentPlan.title || "",
-                summary: currentPlan.summary || "",
+                summary: buildChapterSummary(currentPlan), // 🟢 Dùng hàm buildChapterSummary để nhận đúng dữ liệu từ các trường purpose, conflict, endingHook hoặc summary
             });
+            setAiSuggestedSummary(""); // Reset AI box khi đổi chương
         }
     }, [currentPlan]);
 
     // =====================================================
-    // KẾ HOẠCH CHƯƠNG
+    // 3. GỌI AI N8N (TẠO MỚI KẾ HOẠCH KẾ TIẾP & TỰ ĐỘNG TẠO CHƯƠNG)
     // =====================================================
-    const handleAddPlan = async () => {
-        try {
-            const token = localStorage.getItem("token");
-            const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const nextNum = plans.length + 1;
+    const handleAISuggestPlan = async () => {
+        if (!storyId) {
+            toast.error("Không tìm thấy storyId.");
+            return;
+        }
+
+        // 🟢 Kiểm tra: Nếu đã có kế hoạch trước đó nhưng để trống tóm tắt thì bắt buộc phải điền trước
+        if (plans.length > 0) {
+            const hasEmptySummary = plans.some((p) => !buildChapterSummary(p));
+            if (hasEmptySummary) {
+                toast.error("Vui lòng hoàn thiện nội dung tóm tắt cho các kế hoạch chương hiện tại trước khi tạo thêm kế hoạch mới!");
+                return; // ⛔ Chặn, không gửi request sang n8n
+            }
+        }
+
+        try {
+            setIsAILoading(true);
+            const config = getAuthConfig();
+            const nextNum = plans.length > 0 ? Math.max(...plans.map((p) => Number(p.chapterNumber) || 0)) + 1 : 1;
+
             const payload = {
                 storyId: Number(storyId),
-                chapterNumber: nextNum,
-                planData: {
-                    versionName: `Chương ${nextNum} (Kế hoạch)`,
-                    summary: "Nhập nội dung tóm tắt kế hoạch...",
-                },
+                chapterNumber: Number(nextNum),
             };
 
-            const res = await axios.post(`https://api.baostory.fun/api/chapterPlan`, payload, config);
-            if (res.data.success) {
-                toast.success("Thêm kế hoạch chương thành công!");
-                await fetchPlans();
-                const newId = res.data.data?.insertedId || res.data.data?._id;
-                if (newId) {
-                    setSelectedPlanId(newId);
-                }
+            const res = await axios.post(`https://api.baostory.fun/api/chapterPlan/suggest-next`, payload, config);
 
-                setIsEditingPlan(true); // Bật sẵn chế độ sửa cho tiện nhập liệu
+            if (!res.data?.success) {
+                toast.error(res.data?.message || "Không thể tạo kế hoạch chương.");
+                return;
             }
+
+            toast.success(`AI đã tạo kế hoạch và khởi tạo chương mới thành công!`);
+            await fetchPlans();
+
+            const newId = res.data?.data?.planId;
+            if (newId) setSelectedPlanId(newId);
         } catch (err) {
-            console.error("Lỗi thêm kế hoạch:", err);
-            toast.error(err.response?.data?.message || "Không thể thêm mới kế hoạch.");
+            console.error("❌ LỖI TẠO KẾ HOẠCH:", err.response?.data || err);
+            toast.error(err.response?.data?.message || "Không thể kết nối tới hệ thống.");
+        } finally {
+            setIsAILoading(false);
+        }
+    };
+    // =====================================================
+    // GỢI Ý AI CHO CHƯƠNG HIỆN TẠI (HIỂN THỊ CỘT RIÊNG)
+    // =====================================================
+
+    const handleAISuggestCurrentPlan = async () => {
+        if (!storyId || !currentPlan) {
+            toast.error("Vui lòng chọn một kế hoạch chương.");
+            return;
+        }
+
+        try {
+            setIsCurrentAILoading(true);
+            const config = getAuthConfig();
+            const currentChapterNumber = Number(currentPlan.chapterNumber);
+            const payload = {
+                storyId: Number(storyId),
+                chapterNumber: currentChapterNumber,
+            };
+
+            const res = await axios.post(`https://api.baostory.fun/api/chapterPlan/suggest-current`, payload, config);
+            if (!res.data?.success) {
+                toast.error(res.data?.message || "Không thể lấy gợi ý AI.");
+                return;
+            }
+
+            const data = res.data.data;
+            const generatedSummary = buildChapterSummary(data);
+
+            // Lưu vào state riêng của AI để hiển thị cột bên phải
+            setAiSuggestedSummary(generatedSummary);
+            setIsEditingPlan(true);
+
+            toast.success(`AI đã đưa ra gợi ý mới cho Chương ${currentChapterNumber}.`);
+        } catch (err) {
+            console.error("❌ LỖI GỢI Ý CHƯƠNG HIỆN TẠI:", err.response?.data || err);
+            toast.error(err.response?.data?.message || "Không thể kết nối hệ thống AI.");
+        } finally {
+            setIsCurrentAILoading(false);
         }
     };
 
+    // Nút chấp nhận nội dung từ AI đưa sang cột gốc nhưng GIỮ LẠI khung AI
+    const handleAcceptAISummary = () => {
+        if (!aiSuggestedSummary) return;
+        setPlanForm((prev) => ({
+            ...prev,
+            summary: aiSuggestedSummary,
+        }));
+        toast.success("Đã áp dụng nội dung từ AI vào văn bản gốc!");
+    };
+
+    // =====================================================
+    // 4. LƯU KẾ HOẠCH
+    // =====================================================
+
     const handleSavePlan = async () => {
         try {
-            const token = localStorage.getItem("token");
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-
+            const config = getAuthConfig();
             const payload = {
                 storyId: Number(storyId),
                 chapterNumber: Number(planForm.chapterNumber),
@@ -165,347 +285,201 @@ export default function ChapterPlanEditor() {
                 res = await axios.post(`https://api.baostory.fun/api/chapterPlan`, payload, config);
             }
 
-            if (res.data.success) {
+            if (res.data?.success) {
                 toast.success("Lưu kế hoạch chương thành công!");
-                fetchPlans();
+                await fetchPlans();
                 setIsEditingPlan(false);
+                setAiSuggestedSummary("");
+            } else {
+                toast.error(res.data?.message || "Lưu kế hoạch thất bại.");
             }
         } catch (err) {
-            console.error("Lỗi lưu kế hoạch:", err);
+            console.error("❌ Lỗi lưu kế hoạch:", err.response?.data || err);
             toast.error(err.response?.data?.message || "Không thể lưu kế hoạch.");
         }
     };
+
+    // =====================================================
+    // 5. XÓA KẾ HOẠCH
+    // =====================================================
 
     const handleDeletePlan = async (id, e) => {
         e.stopPropagation();
         if (!window.confirm("Bạn có chắc muốn xóa kế hoạch chương này không?")) return;
 
         try {
-            const token = localStorage.getItem("token");
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-
+            const config = getAuthConfig();
             const res = await axios.delete(`https://api.baostory.fun/api/chapterPlan/${id}`, config);
-            if (res.data.success) {
+            if (res.data?.success) {
                 toast.success("Xóa kế hoạch chương thành công!");
-                fetchPlans();
-                if (selectedPlanId === id) {
-                    setSelectedPlanId(null);
-                }
+                if (selectedPlanId === id) setSelectedPlanId(null);
+                await fetchPlans();
+            } else {
+                toast.error(res.data?.message || "Không thể xóa kế hoạch.");
             }
         } catch (err) {
-            console.error("Lỗi xóa kế hoạch:", err);
+            console.error("❌ Lỗi xóa kế hoạch:", err.response?.data || err);
             toast.error(err.response?.data?.message || "Không thể xóa kế hoạch.");
         }
     };
 
-    // =====================================================
-    // PHÂN CẢNH
-    // =====================================================
-    const startEditScene = (scene, editMode = false) => {
-        setSelectedScene(scene);
-        setSceneForm({
-            title: scene.title || "",
-            summary: scene.summary || "",
-            content: scene.content || "",
-            sceneOrder: scene.sceneOrder || 1,
-        });
-        setIsEditingScene(editMode);
-    };
-
-    const startAddScene = () => {
-        setSelectedScene({ _id: "new" });
-        setSceneForm({
-            title: "",
-            summary: "",
-            content: "",
-            sceneOrder: currentScenes.length + 1,
-        });
-        setIsEditingScene(true);
-    };
-
-    const handleSaveScene = async () => {
-        try {
-            const token = localStorage.getItem("token");
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-
-            if (selectedScene?._id === "new") {
-                // Đồng bộ theo đặc tả 033_F1: Gửi sceneData lên
-                const payload = {
-                    sceneData: {
-                        sceneOrder: Number(sceneForm.sceneOrder),
-                        title: sceneForm.title,
-                        summary: sceneForm.summary,
-                        content: sceneForm.content,
-                    },
-                };
-
-                // Gọi API tạo mới phân cảnh dựa theo chapterId (selectedPlanId)
-                const res = await axios.post(`https://api.baostory.fun/api/scenes/${selectedPlanId}`, payload, config);
-
-                if (res.data.success) {
-                    toast.success("Thêm phân cảnh thành công!");
-                    fetchScenes();
-                    setIsEditingScene(false);
-                }
-            } else {
-                // Đồng bộ theo đặc tả 035_F1: Gửi updateData lên
-                const payload = {
-                    updateData: {
-                        sceneOrder: Number(sceneForm.sceneOrder),
-                        title: sceneForm.title,
-                        summary: sceneForm.summary,
-                        content: sceneForm.content,
-                    },
-                };
-
-                // Gọi API cập nhật phân cảnh theo sceneId
-                const res = await axios.put(`https://api.baostory.fun/api/scenes/${selectedScene._id}`, payload, config);
-
-                if (res.data.success) {
-                    toast.success("Cập nhật phân cảnh thành công!");
-                    fetchScenes();
-                    setIsEditingScene(false);
-                }
-            }
-        } catch (err) {
-            console.error("Lỗi lưu phân cảnh:", err);
-            toast.error(err.response?.data?.message || "Không thể lưu phân cảnh.");
-        }
-    };
-
-    const handleDeleteScene = async (id) => {
-        if (!window.confirm("Bạn có chắc muốn xóa phân cảnh này?")) return;
-        try {
-            const token = localStorage.getItem("token");
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-
-            // Đồng bộ theo đặc tả 037_F1: Gọi DELETE theo sceneId
-            const res = await axios.delete(`https://api.baostory.fun/api/scenes/${id}`, config);
-
-            if (res.data.success) {
-                toast.success("Xóa phân cảnh thành công!");
-                fetchScenes();
-                setSelectedScene(null);
-                setIsEditingScene(false);
-            }
-        } catch (err) {
-            console.error("Lỗi xóa phân cảnh:", err);
-            toast.error(err.response?.data?.message || "Không thể xóa phân cảnh.");
-        }
-    };
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-[#080d1a] text-blue-500">
+                <div className="flex items-center gap-3">
+                    <Loader2 size={30} className="animate-spin" />
+                    <span className="text-sm text-slate-400">Đang tải kế hoạch chương...</span>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex h-screen overflow-hidden bg-[#080d1a] text-[#dae2fd] p-6 gap-6">
-            {/* =====================================================
-                CỘT TRÁI: DANH SÁCH KẾ HOẠCH CHƯƠNG
-               ===================================================== */}
-            <aside className="w-1/4 min-w-[250px] flex flex-col rounded-3xl border border-white/10 bg-[#131720] overflow-hidden">
-                <div className="p-3 border-b border-white/10">
-                    <button onClick={() => navigate(`/stories/${storyId}/editor`)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition">
-                        Quay lại
-                    </button>
-                </div>
+        <div className="flex h-screen overflow-hidden bg-[#080d1a] p-6 text-[#dae2fd]">
+            <div className="flex w-full gap-6">
+                {/* =====================================================
+                    CỘT TRÁI: DANH SÁCH
+                ===================================================== */}
+                <aside className="flex w-1/4 min-w-[270px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#131720]">
+                    <div className="border-b border-white/10 p-3">
+                        <button onClick={() => navigate(`/stories/${storyId}/editor`)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+                            Quay lại
+                        </button>
+                    </div>
 
-                <div className="p-4 border-b border-white/10 flex items-center justify-between shrink-0">
-                    <h3 className="font-bold text-white flex items-center gap-2">
-                        <BookOpen size={18} className="text-blue-400" /> Danh sách kế hoạch
-                    </h3>
-                    <button onClick={handleAddPlan} className="flex items-center gap-1 rounded-xl bg-[#0571d3] px-3 py-1.5 text-xs font-semibold hover:bg-[#0460b3] transition text-white">
-                        <Plus size={14} /> Thêm
-                    </button>
-                </div>
+                    <div className="flex shrink-0 items-center justify-between border-b border-white/10 p-4">
+                        {/* Tiêu đề */}
+                        <h3 className="flex items-center gap-2 text-sm font-extrabold tracking-wide text-slate-200">
+                            <div className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                                <BookOpen size={14} />
+                            </div>
+                            <span>Danh sách kế hoạch</span>
+                        </h3>
 
-                <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 custom-scroll">
-                    {loading ? (
-                        <div className="flex h-32 items-center justify-center text-slate-400 gap-2">
-                            <Loader2 size={20} className="animate-spin text-blue-400" />
-                            <span className="text-xs">Đang tải...</span>
-                        </div>
-                    ) : (
-                        plans.map((p) => (
+                        {/* Nút bấm thu nhỏ nằm cùng hàng */}
+                        <button onClick={handleAISuggestPlan} disabled={isAILoading} className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-1.5 text-[10px] font-bold text-white shadow-lg shadow-purple-500/10 transition hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50">
+                            {isAILoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} className="text-purple-200" />}
+                            <span>{isAILoading ? "Đang tạo..." : "Thêm"}</span>
+                        </button>
+                    </div>
+
+                    <div className="custom-scroll flex flex-1 flex-col gap-2 overflow-y-auto p-3">
+                        {plans.map((p) => (
                             <div
                                 key={p._id}
                                 onClick={() => {
                                     setSelectedPlanId(p._id);
-                                    setSelectedScene(null);
-                                    setIsEditingScene(false);
                                     setIsEditingPlan(false);
+                                    setAiSuggestedSummary("");
                                 }}
-                                className={`group flex items-center justify-between rounded-2xl border p-4 cursor-pointer transition-all ${selectedPlanId === p._id ? "border-blue-500 bg-blue-500/10 text-white shadow-lg" : "border-white/5 bg-[#0F172A]/40 text-slate-400 hover:bg-white/5"}`}
+                                className={`group flex cursor-pointer items-center justify-between rounded-2xl border p-4 transition-all ${selectedPlanId === p._id ? "border-blue-500 bg-blue-500/10 text-white shadow-lg" : "border-white/5 bg-[#0F172A]/40 text-slate-400 hover:bg-white/5"}`}
                             >
-                                <div className="flex flex-col min-w-0 pr-2">
-                                    <span className="text-xs font-semibold text-slate-500 group-hover:text-blue-400 transition">Chương {p.chapterNumber}</span>
-                                    <span className="font-bold text-sm truncate text-slate-200 mt-0.5">{p.versionName || p.title || `Chương ${p.chapterNumber}`}</span>
+                                <div className="flex min-w-0 flex-col pr-2">
+                                    <span className="text-xs font-semibold text-slate-500 transition group-hover:text-blue-400">Chương {p.chapterNumber}</span>
+                                    <span className="mt-0.5 truncate text-sm font-bold text-slate-200">{p.versionName || p.title || `Chương ${p.chapterNumber}`}</span>
                                 </div>
-                                <button onClick={(e) => handleDeletePlan(p._id, e)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition shrink-0">
+                                <button onClick={(e) => handleDeletePlan(p._id, e)} className="shrink-0 rounded-lg p-1.5 text-slate-500 opacity-0 transition hover:bg-red-500/20 hover:text-red-400 group-hover:opacity-100">
                                     <Trash2 size={14} />
                                 </button>
                             </div>
-                        ))
-                    )}
-                    {!loading && plans.length === 0 && <div className="text-center italic text-slate-500 text-sm mt-4">Chưa có kế hoạch nào.</div>}
-                </div>
-            </aside>
-
-            {/* =====================================================
-                CỘT PHẢI: CHI TIẾT KẾ HOẠCH & PHÂN CẢNH
-               ===================================================== */}
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                <section className="mb-4 flex items-center justify-between rounded-2xl border border-white/10 bg-[#131720] p-2 shrink-0">
-                    <div className="flex gap-2">
-                        <button onClick={() => setActiveTab("plan")} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${activeTab === "plan" ? "bg-blue-500 text-white shadow-lg" : "text-slate-400 hover:bg-white/5"}`}>
-                            <BookOpen size={16} /> Kế hoạch chương
-                        </button>
-
-                        <button onClick={() => setActiveTab("scenes")} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${activeTab === "scenes" ? "bg-blue-500 text-white shadow-lg" : "text-slate-400 hover:bg-white/5"}`}>
-                            <Clapperboard size={16} /> Phân cảnh ({currentScenes.length})
-                        </button>
+                        ))}
+                        {!loading && plans.length === 0 && <div className="mt-4 text-center text-sm italic text-slate-500">Chưa có kế hoạch nào.</div>}
                     </div>
-                </section>
+                </aside>
 
-                <section className="flex-1 min-h-0 flex flex-col rounded-3xl border border-white/10 bg-[#131720] p-6 overflow-hidden">
-                    {loading ? (
-                        <div className="flex h-full items-center justify-center text-slate-400 gap-2">
-                            <Loader2 size={24} className="animate-spin text-blue-500" />
-                            <span>Đang tải thông tin...</span>
-                        </div>
-                    ) : !currentPlan ? (
-                        <div className="flex h-full items-center justify-center italic text-slate-500">Vui lòng chọn hoặc thêm một kế hoạch để bắt đầu.</div>
-                    ) : activeTab === "plan" ? (
-                        /* TAB: KẾ HOẠCH CHƯƠNG */
-                        <div className="flex flex-col h-full gap-4">
-                            <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                                <h2 className="text-xl font-bold text-white">Kế Hoạch: Chương {currentPlan.chapterNumber}</h2>
+                {/* =====================================================
+                    CỘT PHẢI: CHI TIẾT KẾ HOẠCH & 2 KHUNG VĂN BẢN
+                ===================================================== */}
+                <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#131720] p-6">
+                        {currentPlan ? (
+                            <div className="flex h-full flex-col gap-4 overflow-y-auto custom-scroll pr-2">
+                                {/* HEADER */}
+                                <div className="flex items-center justify-between border-b border-white/5 pb-3 shrink-0">
+                                    <h2 className="text-xl font-bold text-white">Kế Hoạch: Chương {currentPlan.chapterNumber}</h2>
 
-                                {!isEditingPlan ? (
-                                    <button onClick={() => setIsEditingPlan(true)} className="flex items-center gap-2 rounded-xl bg-[#0571d3] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0460b3]">
-                                        <PenSquare size={16} /> Sửa kế hoạch
-                                    </button>
-                                ) : (
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => setIsEditingPlan(false)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-slate-300 transition hover:bg-white/5">
-                                            Hủy
-                                        </button>
-                                        <button onClick={handleSavePlan} className="flex items-center gap-2 rounded-xl bg-[#0571d3] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0460b3]">
-                                            <Save size={16} /> Lưu kế hoạch
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                                    <div className="flex items-center gap-3">
+                                        {!isEditingPlan ? (
+                                            <button onClick={() => setIsEditingPlan(true)} className="flex items-center gap-2 rounded-xl bg-[#0571d3] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0460b3]">
+                                                <PenSquare size={16} /> Sửa kế hoạch
+                                            </button>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={handleAISuggestCurrentPlan} disabled={isCurrentAILoading} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-purple-500/10 transition hover:opacity-90 disabled:opacity-50">
+                                                    {isCurrentAILoading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                                                    <span>{isCurrentAILoading ? "Đang gợi ý..." : "Gợi ý AI (n8n)"}</span>
+                                                </button>
 
-                            <div className="flex flex-col gap-4 mt-2">
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">Số thứ tự chương</label>
-                                        {isEditingPlan ? <input type="number" value={planForm.chapterNumber} onChange={(e) => setPlanForm({ ...planForm, chapterNumber: e.target.value })} className="w-full rounded-xl border border-white/10 bg-[#0F172A] px-4 py-3 text-slate-200 outline-none focus:border-blue-500 transition" /> : <div className="rounded-xl border border-white/10 bg-[#0F172A]/70 px-4 py-3 text-slate-100 font-medium">{currentPlan.chapterNumber}</div>}
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">Tên kế hoạch / Phiên bản</label>
-                                        {isEditingPlan ? <input type="text" value={planForm.versionName} onChange={(e) => setPlanForm({ ...planForm, versionName: e.target.value })} className="w-full rounded-xl border border-white/10 bg-[#0F172A] px-4 py-3 text-slate-200 outline-none focus:border-blue-500 transition" /> : <div className="rounded-xl border border-white/10 bg-[#0F172A]/70 px-4 py-3 text-slate-100 font-medium">{currentPlan.versionName || currentPlan.title || "Chưa đặt tên"}</div>}
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col gap-1.5 flex-1">
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tóm tắt nội dung kế hoạch</label>
-                                    {isEditingPlan ? <textarea value={planForm.summary} onChange={(e) => setPlanForm({ ...planForm, summary: e.target.value })} rows={6} className="w-full rounded-xl border border-white/10 bg-[#0F172A] p-4 text-slate-200 outline-none focus:border-blue-500 transition resize-none leading-7 h-[250px] custom-scroll" /> : <div className="rounded-xl border border-white/5 bg-[#0F172A]/60 p-4 text-slate-300 whitespace-pre-wrap leading-7 h-[250px] custom-scroll">{currentPlan.summary || <span className="italic text-slate-600">Chưa có tóm tắt kế hoạch.</span>}</div>}
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        /* TAB: QUẢN LÝ PHÂN CẢNH */
-                        <div className="flex h-full gap-5 overflow-hidden">
-                            <div className="w-2/5 border-r border-white/10 pr-4 flex flex-col gap-2 overflow-y-auto custom-scroll">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs font-bold text-slate-400 uppercase">Danh sách phân cảnh</span>
-                                    <button onClick={startAddScene} className="flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-xs font-semibold text-blue-400 hover:bg-blue-500/20 transition">
-                                        <Plus size={12} /> Thêm
-                                    </button>
-                                </div>
-
-                                {loadingScenes ? (
-                                    <div className="flex h-32 items-center justify-center text-slate-500 gap-2">
-                                        <Loader2 size={16} className="animate-spin text-violet-400" />
-                                        <span className="text-xs">Đang tải phân cảnh...</span>
-                                    </div>
-                                ) : (
-                                    currentScenes.map((scene) => (
-                                        <div key={scene._id} onClick={() => startEditScene(scene, false)} className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${selectedScene?._id === scene._id ? "border-violet-500 bg-violet-500/10 text-white" : "border-white/5 bg-[#0F172A]/40 text-slate-400 hover:bg-white/5"}`}>
-                                            <div className="flex justify-between items-start">
-                                                <span className="text-xs font-bold text-violet-400">#Cảnh {scene.sceneOrder}</span>
                                                 <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDeleteScene(scene._id);
+                                                    onClick={() => {
+                                                        setIsEditingPlan(false);
+                                                        setAiSuggestedSummary("");
                                                     }}
-                                                    className="p-1 hover:text-red-400 text-slate-500 transition"
+                                                    disabled={isCurrentAILoading}
+                                                    className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-slate-300 transition hover:bg-white/5"
                                                 >
-                                                    <Trash2 size={12} />
+                                                    Hủy
+                                                </button>
+
+                                                <button onClick={handleSavePlan} disabled={isCurrentAILoading} className="flex items-center gap-2 rounded-xl bg-[#0571d3] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0460b3]">
+                                                    <Save size={16} /> Lưu kế hoạch
                                                 </button>
                                             </div>
-                                            <h4 className="font-semibold text-sm text-slate-200 mt-1 truncate">{scene.title}</h4>
-                                        </div>
-                                    ))
-                                )}
+                                        )}
+                                    </div>
+                                </div>
 
-                                {!loadingScenes && currentScenes.length === 0 && <div className="text-center italic text-slate-600 text-xs mt-6">Chưa có phân cảnh nào.</div>}
-                            </div>
-
-                            <div className="flex-1 flex flex-col min-w-0 overflow-y-auto custom-scroll">
-                                {selectedScene ? (
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                                            <h4 className="font-bold text-white flex items-center gap-2 text-base">{selectedScene._id === "new" ? "Phân cảnh mới" : `Cảnh ${sceneForm.sceneOrder}`}</h4>
-
-                                            {isEditingScene ? (
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => setIsEditingScene(false)} className="px-2.5 py-1 text-xs border border-white/10 rounded-lg text-slate-400 hover:bg-white/5">
-                                                        Hủy
-                                                    </button>
-                                                    <button onClick={handleSaveScene} className="px-2.5 py-1 text-xs bg-blue-500 text-white rounded-lg flex items-center gap-1 hover:bg-blue-600">
-                                                        <Save size={12} /> Lưu
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <button onClick={() => setIsEditingScene(true)} className="px-2.5 py-1 text-xs bg-[#0571d3] text-white rounded-lg flex items-center gap-1 hover:bg-blue-600">
-                                                    <PenSquare size={12} /> Sửa nội dung
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        <div className="flex flex-col gap-3 text-sm">
-                                            <div className="grid grid-cols-4 gap-2">
-                                                <div className="col-span-1">
-                                                    <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">Thứ tự</label>
-                                                    <input type="number" disabled={!isEditingScene} value={sceneForm.sceneOrder} onChange={(e) => setSceneForm({ ...sceneForm, sceneOrder: Number(e.target.value) })} className="w-full rounded-lg border border-white/10 bg-[#0F172A] p-2 text-slate-200 outline-none focus:border-blue-500 disabled:opacity-60" />
-                                                </div>
-                                                <div className="col-span-3">
-                                                    <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">Tiêu đề cảnh</label>
-                                                    <input type="text" disabled={!isEditingScene} value={sceneForm.title} onChange={(e) => setSceneForm({ ...sceneForm, title: e.target.value })} placeholder="Nhập tên phân cảnh..." className="w-full rounded-lg border border-white/10 bg-[#0F172A] p-2 text-slate-200 outline-none focus:border-blue-500 disabled:opacity-60" />
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">Tóm tắt ngắn</label>
-                                                <input type="text" disabled={!isEditingScene} value={sceneForm.summary} onChange={(e) => setSceneForm({ ...sceneForm, summary: e.target.value })} placeholder="Tóm tắt ngắn hành động chính..." className="w-full rounded-lg border border-white/10 bg-[#0F172A] p-2 text-slate-200 outline-none focus:border-blue-500 disabled:opacity-60" />
-                                            </div>
-
-                                            <div>
-                                                <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">Nội dung chi tiết phân cảnh</label>
-                                                {isEditingScene ? <textarea rows={6} value={sceneForm.content} onChange={(e) => setSceneForm({ ...sceneForm, content: e.target.value })} placeholder="Viết diễn biến chi tiết tại đây..." className="w-full rounded-lg border border-white/10 bg-[#0F172A] p-3 text-slate-200 outline-none focus:border-blue-500 resize-none leading-6 h-[260px]" /> : <div className="rounded-lg border border-white/5 bg-[#0F172A]/60 p-3 text-slate-300 h-[260px] whitespace-pre-wrap leading-6 text-xs overflow-y-auto">{selectedScene.content || <span className="italic text-slate-600">Chưa có nội dung chi tiết. Click "Sửa nội dung" để viết truyện.</span>}</div>}
-                                            </div>
+                                {/* FORM METADATA */}
+                                <div className="mt-2 flex flex-col gap-4 shrink-0">
+                                    <div className=" gap-6">
+                                        <div className="space-y-2">
+                                            <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">Tên kế hoạch</label>
+                                            {isEditingPlan ? <input type="text" value={planForm.versionName} onChange={(e) => setPlanForm({ ...planForm, versionName: e.target.value })} className="w-full rounded-xl border border-white/10 bg-[#0F172A] px-4 py-3 text-slate-200 outline-none focus:border-blue-500 transition" /> : <div className="rounded-xl border border-white/10 bg-[#0F172A]/70 px-4 py-3 font-medium text-slate-100">{currentPlan.versionName || currentPlan.title || "Chưa đặt tên"}</div>}
                                         </div>
                                     </div>
-                                ) : (
-                                    <div className="flex h-full items-center justify-center italic text-slate-600 text-xs py-10">
-                                        <Eye size={14} className="mr-1" /> Chọn hoặc thêm một phân cảnh cụ thể để xem chi tiết.
-                                    </div>
-                                )}
+                                </div>
+
+                                {/* CHIA KẾ HOẠCH THÀNH 2 CỘT: GỐC VÀ AI TRẢ VỀ (LUÔN HIỆN KHI ĐANG SỬA) */}
+                                <div className="flex flex-col gap-1.5 flex-1">
+                                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Tóm tắt nội dung kế hoạch</label>
+
+                                    {isEditingPlan ? (
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1">
+                                            {/* CỘT 2: KẾT QUẢ AI TRẢ VỀ (LUÔN HIỆN KHI ĐANG SỬA) */}
+                                            <div className="flex flex-col gap-2 relative">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="text-[11px] font-bold text-purple-400 uppercase tracking-wide flex items-center gap-1.5">
+                                                        <Sparkles size={14} /> Gợi ý mới từ AI (n8n)
+                                                    </div>
+                                                    <button onClick={handleAcceptAISummary} disabled={!aiSuggestedSummary} className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 transition shadow-sm disabled:opacity-40" title="Chuyển toàn bộ nội dung AI sang khung bên trái">
+                                                        <Check size={14} /> Áp dụng thay thế
+                                                    </button>
+                                                </div>
+                                                <div className="custom-scroll h-[320px] w-full overflow-y-auto whitespace-pre-wrap rounded-xl border border-purple-500/30 bg-purple-500/[0.03] p-4 leading-7 text-slate-200 shadow-inner">{aiSuggestedSummary || <span className="italic text-slate-600">Bấm "Gợi ý AI (n8n)" ở phía trên để nhận nội dung mới từ AI...</span>}</div>
+                                            </div>{" "}
+                                            {/* CỘT 1: VĂN BẢN GỐC / CHỈNH SỬA */}
+                                            <div className="flex flex-col gap-2">
+                                                <div className="text-[11px] font-bold text-blue-400 uppercase tracking-wide">Văn bản gốc / Chỉnh sửa</div>
+                                                <textarea value={planForm.summary} onChange={(e) => setPlanForm({ ...planForm, summary: e.target.value })} rows={10} className="custom-scroll h-[320px] w-full resize-none rounded-xl border border-blue-500/40 bg-[#0F172A] p-4 leading-7 text-slate-200 outline-none transition focus:border-blue-500 shadow-lg" />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        /* HIỂN THỊ THƯỜNG KHI KHÔNG SỬA (CHỈ XEM) */
+                                        <div className="flex-1">
+                                            <div className="custom-scroll h-[320px] w-full overflow-y-auto whitespace-pre-wrap rounded-xl border border-white/5 bg-[#0F172A]/60 p-4 leading-7 text-slate-300">
+                                                {/* 🟢 Cập nhật cách lấy nội dung hiển thị để tự động dùng buildChapterSummary */}
+                                                {buildChapterSummary(currentPlan) || <span className="italic text-slate-600">Chưa có tóm tắt kế hoạch.</span>}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    )}
-                </section>
-            </main>
+                        ) : (
+                            <div className="flex h-full items-center justify-center text-sm italic text-slate-500">Vui lòng chọn hoặc tạo mới một kế hoạch chương bên cột trái.</div>
+                        )}
+                    </section>
+                </main>
+            </div>
         </div>
     );
 }

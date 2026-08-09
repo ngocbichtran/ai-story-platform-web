@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, BookOpen, Layers, Users, FolderHeart, Plus, ScrollText, Clapperboard, Loader2, Trash2 } from "lucide-react";
-import { useNavigate, Link, useLocation } from "react-router-dom"; //   Bổ sung useLocation
+import { ArrowLeft, BookOpen, Layers, Users, FolderHeart, Plus, ScrollText, Clapperboard, Loader2, Trash2, Download } from "lucide-react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 
 export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter }) {
-    const location = useLocation(); // Lấy location hiện tại của trình duyệt
+    const location = useLocation();
     const navigate = useNavigate();
 
     const [chaptersList, setChaptersList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [activeChapter, setActiveChapter] = useState(null);
-    const [activeNav, setActiveNav] = useState(""); // Khởi tạo rỗng để useEffect tự động sync từ URL
+    const [activeNav, setActiveNav] = useState("");
     const [story, setStory] = useState(null);
+    const [showCreateChapterModal, setShowCreateChapterModal] = useState(false);
+    const [chapterTitle, setChapterTitle] = useState("");
+    const [chapterNumberInput, setChapterNumberInput] = useState("");
 
     const navItems = [
         { id: "overview", label: "Tổng quan", path: `/stories/${storyId}/editor/overview`, icon: <Layers size={15} /> },
@@ -23,58 +26,33 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
         { id: "plan", label: "Kế hoạch", path: `/stories/${storyId}/editor/plan`, icon: <Clapperboard size={16} /> },
     ];
 
-    const [showCreateChapterModal, setShowCreateChapterModal] = useState(false);
-    const [chapterTitle, setChapterTitle] = useState("");
-    const [chapterNumberInput, setChapterNumberInput] = useState("");
-
     // =========================================================================
-    // 3. TỰ ĐỘNG ĐỒNG BỘ TAB ACTIVE THEO URL THỰC TẾ
+    // ĐỒNG BỘ NAVIGATION
     // =========================================================================
     useEffect(() => {
         const currentPath = location.pathname;
-
         if (currentPath.includes("/editor/chapter/")) {
             const match = currentPath.match(/\/editor\/chapter\/(\d+)/);
-            if (match && match[1]) {
-                setActiveChapter(Number(match[1]));
-            } else {
-                setActiveChapter(null);
-            }
-            setActiveNav(""); // Xóa active của danh mục tổng quan khi đang ở trang chương
+            setActiveChapter(match ? Number(match[1]) : null);
+            setActiveNav("");
         } else {
             setActiveChapter(null);
-            // Tìm tab tổng quan khớp với đuôi URL
             const matchedNav = navItems.find((item) => currentPath.endsWith(item.id));
-            if (matchedNav) {
-                setActiveNav(matchedNav.id);
-            } else if (currentPath.endsWith("/editor") || currentPath.endsWith("/editor/")) {
-                setActiveNav("overview");
-            }
+            setActiveNav(matchedNav ? matchedNav.id : currentPath.endsWith("/editor") ? "overview" : "");
         }
-    }, [location.pathname, storyId]);
+    }, [location.pathname]);
 
-    // =========================================================================
-    // API: TẢI DANH SÁCH CHƯƠNG & THÔNG TIN DASHBOARD
-    // =========================================================================
     const fetchData = async () => {
         if (!storyId) return;
         try {
             setLoading(true);
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
-
             const [storyRes, chaptersRes] = await Promise.all([axios.get(`https://api.baostory.fun/api/stories/${storyId}`, config), axios.get(`https://api.baostory.fun/api/chapters/${storyId}/chapters`, config)]);
-
-            if (storyRes.data?.success) {
-                setStory(storyRes.data.data);
-            }
-
-            if (chaptersRes.data?.success) {
-                setChaptersList(chaptersRes.data.data || []);
-            }
+            if (storyRes.data?.success) setStory(storyRes.data.data);
+            if (chaptersRes.data?.success) setChaptersList(chaptersRes.data.data || []);
         } catch (error) {
-            console.error("Lỗi đồng bộ dữ liệu Sidebar:", error);
-            toast.error(error.response?.data?.message || "Không thể tải danh mục tác phẩm.");
+            toast.error("Không thể tải danh mục tác phẩm.");
         } finally {
             setLoading(false);
         }
@@ -85,218 +63,170 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
     }, [storyId]);
 
     // =========================================================================
-    // API: TẠO CHƯƠNG MỚI
+    // XỬ LÝ IMPORT (DÙNG DOMPARSER BÓC TÁCH HTML)
+    // =========================================================================
+    const handleImportChapters = async (file) => {
+        try {
+            toast.loading("Đang phân tích file...", { id: "importing" });
+            const htmlText = await file.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, "text/html");
+            const chapterHeaders = Array.from(doc.querySelectorAll("h2"));
+
+            if (chapterHeaders.length === 0) {
+                toast.dismiss("importing");
+                toast.error("Không tìm thấy cấu trúc chương (thẻ h2) trong file!");
+                return;
+            }
+
+            const token = localStorage.getItem("token");
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+
+            for (const header of chapterHeaders) {
+                const titleText = header.innerText;
+                const match = titleText.match(/Chương\s+(\d+)/i);
+                const chapterNumber = match ? Number(match[1]) : 1;
+
+                let content = "";
+                let nextNode = header.nextElementSibling;
+                while (nextNode && nextNode.tagName !== "H2") {
+                    if (nextNode.tagName === "P") content += nextNode.innerText + "\n";
+                    nextNode = nextNode.nextElementSibling;
+                }
+
+                await axios.post(`https://api.baostory.fun/api/chapters/${storyId}/chapters`, { chapterNumber, title: titleText, content: content.trim() }, config);
+            }
+
+            toast.dismiss("importing");
+            toast.success("Import thành công!");
+            fetchData();
+        } catch (err) {
+            toast.dismiss("importing");
+            toast.error("Lỗi khi đọc file hoặc kết nối server.");
+        }
+    };
+
+    // =========================================================================
+    // CÁC HÀM XỬ LÝ CHƯƠNG THÔNG THƯỜNG
     // =========================================================================
     const handleCreateChapter = async () => {
-        if (!chapterTitle.trim()) {
-            toast.error("Vui lòng nhập tên chương!");
-            return;
-        }
-
-        const parsedNumber = Number(chapterNumberInput);
-        if (!chapterNumberInput || isNaN(parsedNumber) || parsedNumber <= 0) {
-            toast.error("Số chương phải là số nguyên dương lớn hơn 0!");
-            return;
-        }
-
+        if (!chapterTitle.trim() || !chapterNumberInput) return toast.error("Vui lòng nhập đủ thông tin!");
         try {
             setIsCreating(true);
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
-
-            const payload = {
-                chapterNumber: parsedNumber,
-                title: chapterTitle.trim(),
-            };
-
-            const res = await axios.post(`https://api.baostory.fun/api/chapters/${storyId}/chapters`, payload, config);
-
+            const res = await axios.post(`https://api.baostory.fun/api/chapters/${storyId}/chapters`, { chapterNumber: Number(chapterNumberInput), title: chapterTitle.trim() }, config);
             if (res.data.success) {
-                const newChapterObj = res.data.data || {
-                    id: res.data.chapterId,
-                    storyId: Number(storyId),
-                    chapterNumber: parsedNumber,
-                    title: chapterTitle.trim(),
-                };
-
-                setChaptersList((prev) => [...prev, newChapterObj]);
-                setChapterTitle("");
-                setChapterNumberInput("");
+                toast.success("Tạo chương thành công!");
                 setShowCreateChapterModal(false);
-                toast.success("Tạo chương mới thành công!");
-
-                setSelectedChapter(newChapterObj);
-                navigate(`/stories/${storyId}/editor/chapter/${parsedNumber}`);
+                fetchData();
+                navigate(`/stories/${storyId}/editor/chapter/${chapterNumberInput}`);
             }
         } catch (error) {
-            console.error("Lỗi khởi tạo chương truyện:", error);
-            toast.error(error.response?.data?.message || "Khởi tạo chương thất bại.");
+            toast.error("Khởi tạo chương thất bại.");
         } finally {
             setIsCreating(false);
         }
     };
 
-    // =========================================================================
-    // API: XÓA CHƯƠNG TRUYỆN MỀM
-    // =========================================================================
     const handleDeleteChapter = async (e, targetChapterNumber) => {
         e.stopPropagation();
-
-        const confirm = window.confirm(`Bạn có chắc muốn xóa chương ${targetChapterNumber}? Các chương sau sẽ tự động dồn số thứ tự.`);
-        if (!confirm) return;
-
+        if (!window.confirm(`Xóa chương ${targetChapterNumber}?`)) return;
         try {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
-
-            const res = await axios.delete(`https://api.baostory.fun/api/chapters/${storyId}/chapters/${targetChapterNumber}`, config);
-
-            if (res.data.success) {
-                toast.success("Xóa chương thành công!");
-                if (activeChapter === targetChapterNumber) {
-                    navigate(`/stories/${storyId}/editor/overview`);
-                }
-                fetchData();
-            }
+            await axios.delete(`https://api.baostory.fun/api/chapters/${storyId}/chapters/${targetChapterNumber}`, config);
+            toast.success("Đã xóa!");
+            fetchData();
+            if (activeChapter === targetChapterNumber) navigate(`/stories/${storyId}/editor/overview`);
         } catch (err) {
-            toast.error(err.response?.data?.message || "Xóa thất bại.");
+            toast.error("Xóa thất bại.");
         }
     };
 
     return (
         <aside className="h-full max-h-full flex flex-col gap-2.5 select-none overflow-hidden">
-            {/* 1. NÚT QUAY LẠI TRANG CHỦ */}
-            <button onClick={() => navigate("/stories")} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-white bg-slate-950/20 hover:bg-slate-950/40 border border-white/5 transition duration-150 active:scale-[0.98] group flex-none" title="Quay lại danh sách truyện">
-                <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform text-slate-400 group-hover:text-white" />
-                <span>Quay lại</span>
+            <button onClick={() => navigate("/stories")} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-white bg-slate-950/20 hover:bg-slate-950/40 border border-white/5 transition active:scale-[0.98] flex-none">
+                <ArrowLeft size={14} /> Quay lại
             </button>
 
-            {/* 2. KHỐI THÔNG TIN TRUYỆN */}
             <div className="flex-none rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-3 flex items-center gap-2.5 min-w-0">
                 <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 flex-none">
                     <BookOpen size={16} />
                 </div>
-                <div className="min-w-0 flex-1 w-full">
-                    <h3 className="text-sm font-bold text-[#e0e2eb] block truncate mt-0.5" title={story?.title}>
-                        {story?.title || "Đang tải truyện..."}
-                    </h3>
-                </div>
+                <h3 className="text-sm font-bold text-[#e0e2eb] truncate">{story?.title || "Đang tải..."}</h3>
             </div>
 
-            {/* 3. MENU ĐIỀU HƯỚNG TỔNG QUAN */}
             <div className="flex-none rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-1.5 space-y-0.5">
                 {navItems.map((item) => (
-                    <Link key={item.id} to={item.path} className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs md:text-sm font-medium transition duration-150 ${activeNav === item.id ? "bg-[#1d2433] text-[#a7c8ff] font-bold border-l-2 border-[#0571d3] pl-2.5 shadow-md shadow-black/20" : "text-[#c1c6d5] hover:bg-[#181d29] hover:text-white"}`}>
-                        <span className={activeNav === item.id ? "text-[#a7c8ff]" : "text-[#8b919e]"}>{item.icon}</span>
-                        <span>{item.label}</span>
+                    <Link key={item.id} to={item.path} className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition ${activeNav === item.id ? "bg-[#1d2433] text-[#a7c8ff] font-bold border-l-2 border-[#0571d3] pl-2.5" : "text-[#c1c6d5] hover:bg-[#181d29] hover:text-white"}`}>
+                        {item.icon} {item.label}
                     </Link>
                 ))}
             </div>
 
-            {/* 4. DANH SÁCH CHƯƠNG TỰ CO GIÃN THÔNG MINH */}
             <div className="flex-1 rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-3 flex flex-col overflow-hidden min-h-0">
-                <div className="text-[10px] uppercase font-black tracking-widest text-[#8b919e] mb-2.5 flex-none flex justify-between items-center">
+                <div className="text-[10px] uppercase font-black tracking-widest text-[#8b919e] mb-2.5 flex justify-between">
                     <span>Danh sách chương</span>
-                    <span className="text-slate-500 normal-case font-medium">{chaptersList.length} chương</span>
+                    <span>{chaptersList.length}</span>
                 </div>
-
-                <div className="w-full flex-1 h-full overflow-y-auto pr-1 space-y-1 writing-canvas-scroll min-h-0 custom-scroll">
-                    {loading ? (
-                        <div className="flex flex-col items-center justify-center py-8 gap-2">
-                            <Loader2 size={16} className="text-blue-500 animate-spin" />
-                            <div className="text-xs text-slate-500 animate-pulse">Đang đồng bộ danh mục...</div>
-                        </div>
-                    ) : chaptersList.length === 0 ? (
-                        <div className="text-xs text-slate-500 text-center py-6 italic border border-dashed border-white/5 rounded-xl bg-slate-950/10">Tác phẩm chưa có chương nào.</div>
-                    ) : (
-                        [...chaptersList]
-                            .sort((a, b) => Number(a.chapterNumber) - Number(b.chapterNumber))
-                            .map((chapter) => {
-                                const displayTitle = chapter.title ? `Chương ${chapter.chapterNumber}: ${chapter.title}` : `Chương ${chapter.chapterNumber}`;
-                                const isCurrentActive = Number(activeChapter) === Number(chapter.chapterNumber);
-
-                                return (
-                                    <div key={chapter.id || chapter._id || `ch-${chapter.chapterNumber}`} className="relative group/chapter-row w-full flex items-center">
-                                        <button
-                                            onClick={() => {
-                                                setSelectedChapter(chapter);
-                                                navigate(`/stories/${storyId}/editor/chapter/${chapter.chapterNumber}`);
-                                            }}
-                                            className={`w-full text-left px-3 py-2.5 pr-10 rounded-xl text-xs md:text-sm transition-all duration-200 flex items-center gap-2 border ${isCurrentActive ? "bg-[#1d2433] text-[#a7c8ff] font-bold border-blue-500/30 shadow-sm" : "text-[#c1c6d5] border-transparent hover:bg-[#181d29] hover:text-white"}`}
-                                        >
-                                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${isCurrentActive ? "bg-blue-400 scale-110" : "bg-slate-600 group-hover/chapter-row:bg-slate-400"}`} />
-                                            <span className="block truncate flex-1" title={displayTitle}>
-                                                {displayTitle}
-                                            </span>
-                                        </button>
-
-                                        {/* NÚT XÓA CHƯƠNG */}
-                                        <button onClick={(e) => handleDeleteChapter(e, chapter.chapterNumber)} className="absolute right-2 p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover/chapter-row:opacity-100 transition-all duration-200" title={`Xóa chương ${chapter.chapterNumber}`}>
-                                            <Trash2 size={13} />
-                                        </button>
-                                    </div>
-                                );
-                            })
-                    )}
+                <div className="flex-1 overflow-y-auto custom-scroll space-y-1">
+                    {[...chaptersList]
+                        .sort((a, b) => a.chapterNumber - b.chapterNumber)
+                        .map((ch) => (
+                            <div key={ch.chapterNumber} className="group flex items-center">
+                                <button onClick={() => navigate(`/stories/${storyId}/editor/chapter/${ch.chapterNumber}`)} className={`w-full text-left px-3 py-2 rounded-xl text-xs ${activeChapter === ch.chapterNumber ? "bg-[#1d2433] text-blue-300 font-bold" : "text-[#c1c6d5] hover:bg-[#181d29]"}`}>
+                                    {ch.title ? `Chương ${ch.chapterNumber}: ${ch.title}` : `Chương ${ch.chapterNumber}`}
+                                </button>
+                                <button onClick={(e) => handleDeleteChapter(e, ch.chapterNumber)} className="p-1.5 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition">
+                                    <Trash2 size={13} />
+                                </button>
+                            </div>
+                        ))}
                 </div>
             </div>
 
-            {/* 5. NÚT KÍCH HOẠT MODAL TẠO CHƯƠNG */}
-            <button onClick={() => setShowCreateChapterModal(true)} className="h-11 rounded-2xl bg-[#0571d3] hover:bg-[#0460b3] active:scale-[0.98] text-white text-xs md:text-sm font-bold transition flex-none flex items-center justify-center gap-1.5 shadow-lg shadow-[#0571d3]/10">
-                <Plus size={16} />
-                <span>Tạo chương mới</span>
-            </button>
+            {/* NÚT TẠO MỚI & IMPORT CHIA ĐÔI */}
+            <div className="flex gap-2 flex-none">
+                <button
+                    onClick={() => {
+                        const maxChapterNum = chaptersList.length > 0 ? Math.max(...chaptersList.map((ch) => Number(ch.chapterNumber) || 0)) : 0;
+                        setChapterNumberInput(maxChapterNum + 1);
+                        setChapterTitle("");
+                        setShowCreateChapterModal(true);
+                    }}
+                    className="flex-1 h-11 rounded-2xl bg-[#0571d3] hover:bg-[#0460b3] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-lg shadow-[#0571d3]/10"
+                >
+                    <Plus size={16} /> Tạo mới
+                </button>
+                <label className="flex-1 h-11 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border border-white/5">
+                    <ScrollText size={16} /> Import
+                    <input type="file" accept=".txt, .doc, .docx, .html" className="hidden" onChange={(e) => e.target.files[0] && handleImportChapters(e.target.files[0])} />
+                </label>
+            </div>
 
             {/* MODAL TẠO CHƯƠNG */}
             {showCreateChapterModal && (
-                <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn">
-                    <div className="w-[440px] rounded-3xl border border-white/10 bg-[#0B1120] p-6 shadow-2xl relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl pointer-events-none" />
+                <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="w-[400px] rounded-3xl border border-white/10 bg-[#0B1120] p-6 shadow-2xl">
+                        <h2 className="text-lg font-bold text-white mb-4">Khởi tạo chương mới</h2>
 
-                        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <span className="w-1.5 h-5 rounded-full bg-blue-500 block" />
-                            Khởi tạo chương mới
-                        </h2>
-
-                        <div className="space-y-4">
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                    Số thứ tự chương <span className="text-red-400">*</span>
-                                </label>
-                                <input type="number" min="1" placeholder={`Gợi ý chương tiếp theo: ${chaptersList.length + 1}`} value={chapterNumberInput} onChange={(e) => setChapterNumberInput(e.target.value)} className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none focus:border-blue-500 focus:bg-white/10 transition duration-200" />
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                    Tiêu đề chương <span className="text-red-400">*</span>
-                                </label>
-                                <input type="text" value={chapterTitle} onChange={(e) => setChapterTitle(e.target.value)} placeholder="Ví dụ: Khởi đầu mới tại thành phố cổ" className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none focus:border-blue-500 focus:bg-white/10 transition duration-200" />
-                            </div>
+                        <div className="mb-3">
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Số thứ tự chương (Tự động)</label>
+                            <input type="number" readOnly value={chapterNumberInput} className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-slate-400 cursor-not-allowed select-none outline-none" />
                         </div>
 
-                        <div className="flex justify-end gap-3 mt-8 border-t border-white/5 pt-4">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowCreateChapterModal(false);
-                                    setChapterTitle("");
-                                    setChapterNumberInput("");
-                                }}
-                                className="h-10 px-4 rounded-xl bg-white/5 text-slate-300 text-xs font-bold hover:bg-white/10 transition active:scale-95 disabled:opacity-50"
-                                disabled={isCreating}
-                            >
-                                Huỷ bỏ
-                            </button>
+                        <div className="mb-4">
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tiêu đề chương</label>
+                            <input type="text" placeholder="Nhập tiêu đề chương..." value={chapterTitle} onChange={(e) => setChapterTitle(e.target.value)} className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500" />
+                        </div>
 
-                            <button type="button" onClick={handleCreateChapter} disabled={isCreating || !chapterTitle.trim() || !chapterNumberInput} className="h-10 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white text-xs font-bold flex items-center justify-center gap-2 transition hover:scale-[1.02] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-blue-500/10">
-                                {isCreating ? (
-                                    <>
-                                        <Loader2 size={14} className="animate-spin" />
-                                        <span>Đang kiểm tra...</span>
-                                    </>
-                                ) : (
-                                    <span>Xác nhận tạo</span>
-                                )}
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setShowCreateChapterModal(false)} className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white transition">
+                                Huỷ
+                            </button>
+                            <button onClick={handleCreateChapter} disabled={isCreating} className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition">
+                                Xác nhận
                             </button>
                         </div>
                     </div>

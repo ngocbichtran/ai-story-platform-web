@@ -8,7 +8,11 @@ import CustomSelect from "../../../features/styles/CustomSelect";
 export default function EditStory() {
     const navigate = useNavigate();
     const { storyId } = useParams();
-
+    const DEFAULT_COVERS = ["https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=500&auto=format&fit=crop&q=60", "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&auto=format&fit=crop&q=60", "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=500&auto=format&fit=crop&q=60", "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=500&auto=format&fit=crop&q=60"];
+    const handleSelectDefaultCover = (url) => {
+        setCoverPreview(url);
+        setCoverFile(null); // Reset file upload nếu chọn mẫu có sẵn
+    };
     // =========================
     // STATE DỮ LIỆU THỰC TẾ
     // =========================
@@ -257,7 +261,7 @@ export default function EditStory() {
                 title: title.trim(),
                 description: summary.trim(),
                 genreIds: formatGenreIds,
-                coverImage: coverPreview,
+                coverImage: coverPreview, // Gửi URL ảnh (bao gồm cả ảnh mẫu hoặc ảnh preview)
             };
 
             const res = await axios.put(`https://api.baostory.fun/api/stories/${storyId}`, payload, config);
@@ -284,7 +288,7 @@ export default function EditStory() {
     }
 
     return (
-        <div className="min-h-screen bg-[#0B1120] text-white relative overflow-hidden flex flex-col justify-between">
+        <div className="min-h-screen bg-[#0B1120] text-white relative overflow-hidden custom-scroll flex flex-col justify-between">
             {/* BACKGROUND DECORATION */}
             <div className="absolute top-20 left-20 w-96 h-96 bg-blue-600/10 blur-[120px] pointer-events-none" />
             <div className="absolute bottom-20 right-20 w-96 h-96 bg-violet-600/10 blur-[120px] pointer-events-none" />
@@ -325,12 +329,34 @@ export default function EditStory() {
                                 </div>
 
                                 {/* Ảnh bìa */}
-                                <div className="flex items-center gap-4">
-                                    <label className="w-24 shrink-0 text-sm font-medium text-slate-300">Ảnh bìa</label>
-                                    <div className="flex flex-1 items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-                                        <span className="truncate text-sm text-slate-400">{coverFile ? coverFile.name : "Giữ nguyên ảnh hiện tại"}</span>
-                                        <label className="cursor-pointer rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium hover:bg-violet-500 transition">
-                                            Chọn ảnh
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-sm font-medium text-slate-300">Ảnh bìa tác phẩm</label>
+                                        <span className="text-xs text-slate-500">Chọn mẫu có sẵn hoặc tải ảnh lên</span>
+                                    </div>
+
+                                    {/* 4 Ảnh bìa mặc định */}
+                                    <div className="grid grid-cols-4 gap-3">
+                                        {DEFAULT_COVERS.map((url, index) => {
+                                            const isSelected = coverPreview === url;
+                                            return (
+                                                <div key={index} onClick={() => handleSelectDefaultCover(url)} className={`relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${isSelected ? "border-violet-500 shadow-lg shadow-violet-500/20 scale-[1.02]" : "border-white/10 hover:border-white/30 opacity-70 hover:opacity-100"}`}>
+                                                    <img src={url} alt={`Mẫu ${index + 1}`} className="w-full h-full object-cover" />
+                                                    {isSelected && (
+                                                        <div className="absolute inset-0 bg-violet-600/30 flex items-center justify-center backdrop-blur-[2px]">
+                                                            <span className="bg-violet-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">Đang chọn</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Nút tải ảnh tùy chỉnh từ thiết bị */}
+                                    <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                                        <span className="truncate text-sm text-slate-400">{coverFile ? `File: ${coverFile.name}` : "Hoặc tải ảnh từ thiết bị của bạn"}</span>
+                                        <label className="cursor-pointer rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium hover:bg-violet-500 transition shadow-md">
+                                            Tải lên ảnh khác
                                             <input type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
                                         </label>
                                     </div>
@@ -355,19 +381,42 @@ export default function EditStory() {
                                         {isReversing ? <Loader2 className="animate-spin" size={18} /> : "Đảo ngược"}
                                     </button>
                                 </div>
+
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="relative">
-                                        <button type="button" onClick={() => handleCopy("original", reverseIdea)} className="absolute top-3 right-3 z-10 flex items-center justify-center w-9 h-9 rounded-lg border border-white/10 bg-black/40 text-slate-400 hover:bg-violet-600 hover:text-white transition-all">
-                                            {copied === "original" ? <Check size={18} /> : <Copy size={18} />}
-                                        </button>
-                                        <textarea readOnly value={reverseIdea} placeholder="Ý tưởng gốc..." className="h-40 w-full pr-12 custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm" />
+                                    {/* Khung 1: Ý tưởng gốc */}
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center justify-between px-1">
+                                            <button type="button" onClick={() => handleCopy("original", reverseIdea)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:bg-violet-600 hover:text-white transition-all text-xs">
+                                                {copied === "original" ? <Check size={14} /> : <Copy size={14} />}
+                                            </button>
+                                        </div>
+                                        <textarea readOnly value={reverseIdea} placeholder="Ý tưởng gốc..." className="h-80 w-full custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm" />
                                     </div>
 
-                                    <div className="relative">
-                                        <button type="button" onClick={() => handleCopy("reverse", storyPlanning)} className="absolute top-3 right-3 z-10 flex items-center justify-center w-9 h-9 rounded-lg border border-white/10 bg-black/40 text-slate-400 hover:bg-violet-600 hover:text-white transition-all">
-                                            {copied === "reverse" ? <Check size={18} /> : <Copy size={18} />}
-                                        </button>
-                                        <textarea readOnly value={storyPlanning} placeholder="Ý tưởng đảo ngược..." className="h-40 w-full pr-12 custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm" />
+                                    {/* Khung 2: Ý tưởng đảo ngược (AI) */}
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center justify-between px-1">
+                                            {/* Cụm nút hành động nằm GỌN GÀNG ở phía trên, không bao giờ che chữ */}
+                                            <div className="flex items-center gap-1.5">
+                                                {storyPlanning && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSummary(storyPlanning);
+                                                            toast.success("Đã áp dụng ý tưởng AI vào mô tả truyện!");
+                                                        }}
+                                                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-violet-500/30 bg-violet-600 text-white text-xs font-semibold hover:bg-violet-500 transition-all shadow-md"
+                                                        title="Sử dụng kết quả này làm mô tả truyện"
+                                                    >
+                                                        <Check size={14} />
+                                                    </button>
+                                                )}
+                                                <button type="button" onClick={() => handleCopy("reverse", storyPlanning)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:bg-violet-600 hover:text-white transition-all text-xs">
+                                                    {copied === "reverse" ? <Check size={14} /> : <Copy size={14} />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <textarea readOnly value={storyPlanning} placeholder="Ý tưởng đảo ngược..." className="h-80 w-full custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm" />
                                     </div>
                                 </div>
                             </div>

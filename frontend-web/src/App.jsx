@@ -36,6 +36,9 @@ import PlotList from "./features/stories/pages/plots/PlotList";
 // Plans
 import ChapterPlanEditor from "./features/stories/pages/plans/ChapterPlanEditor";
 
+//DerivativeStory (Truyện phái sinh)
+import DerivativeStoryPage from "./features/stories/pages/derivativeStory/DerivativeStoryPage";
+
 function App() {
     return (
         <BrowserRouter>
@@ -88,6 +91,12 @@ function App() {
 
                 {/* ROUTE XEM CHI TIẾT CHƯƠNG */}
                 <Route path="/stories/:storyId/chapters/:chapterNumber/detail" element={<ChapterDetail />} />
+
+                {/* Truyện phái sinh */}
+                <Route path="/stories/:storyId/derivative/create" element={<DerivativeStoryPage />} />
+
+                {/* Route tổng quát khi ấn tạo truyện phái sinh ở trang chủ*/}
+                <Route path="/stories/derivative/create" element={<DerivativeStoryPage />} />
             </Routes>
         </BrowserRouter>
     );

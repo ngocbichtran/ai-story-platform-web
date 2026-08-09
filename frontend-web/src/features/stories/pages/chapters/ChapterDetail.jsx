@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { ArrowLeft, BookOpen, CalendarDays, Clock3, Edit3, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarDays, Clock3, Edit3, FileText, Loader2, Download } from "lucide-react";
 
 export default function ChapterDetailPage() {
     const navigate = useNavigate();
@@ -51,6 +51,51 @@ export default function ChapterDetailPage() {
     // ACTIONS
     const handleGoToEditor = () => {
         navigate(`/stories/${storyId}/editor/chapter/${chapterNumber}/edit`);
+    };
+
+    // HÀM XUẤT FILE RA ĐỊNH DẠNG WORD (.DOC)
+    const handleExportWord = () => {
+        if (!displayContent || !displayContent.trim()) {
+            toast.error("Chương hiện tại đang trống, không thể xuất file!");
+            return;
+        }
+
+        const cleanTitle = (chapterTitle || `chuong-${chapterNumber}`).replace(/[\/\\?%*:|"<>]/g, "").trim();
+
+        // Cấu trúc nội dung chuẩn HTML tương thích tuyệt đối với Microsoft Word
+        const wordHtmlContent = `
+            <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+            <head>
+                <meta charset='utf-8'>
+                <title>${chapterTitle}</title>
+                <style>
+                    body { font-family: 'Times New Roman', Times, serif; font-size: 14pt; line-height: 1.6; color: #000; margin: 20mm; }
+                    h1 { text-align: center; font-size: 18pt; margin-bottom: 20px; }
+                    p { text-align: justify; text-indent: 30px; margin-bottom: 10px; }
+                </style>
+            </head>
+            <body>
+                <h1>Chương ${chapterNumber}: ${chapterTitle}</h1>
+                ${displayContent
+                    .split("\n")
+                    .map((para) => `<p>${para || "&nbsp;"}</p>`)
+                    .join("")}
+            </body>
+            </html>
+        `;
+
+        // Kích hoạt tải file dưới dạng tài liệu Word (.doc)
+        const blob = new Blob(["\ufeff" + wordHtmlContent], { type: "application/msword" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${cleanTitle}.doc`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast.success("Đã xuất file Word thành công!");
     };
 
     // INFO
@@ -126,11 +171,20 @@ export default function ChapterDetailPage() {
                                 </div>
                             </div>
 
-                            {/* Nút Chỉnh sửa */}
-                            <button onClick={handleGoToEditor} className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/10 transition hover:from-blue-500 hover:to-violet-500 active:scale-95 shrink-0 w-full sm:w-auto">
-                                <Edit3 size={16} />
-                                <span>Chỉnh sửa</span>
-                            </button>
+                            {/* Cụm nút bấm bên phải: Xuất file Word & Chỉnh sửa */}
+                            <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto">
+                                {/* Nút Xuất file Word trực tiếp */}
+                                <button onClick={handleExportWord} className="flex items-center justify-center gap-2 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 px-4 py-2.5 text-sm font-bold text-slate-200 transition active:scale-95 flex-1 sm:flex-initial" title="Tải xuống file Word">
+                                    <Download size={16} className="text-emerald-400" />
+                                    <span>Xuất file Word</span>
+                                </button>
+
+                                {/* Nút Chỉnh sửa */}
+                                <button onClick={handleGoToEditor} className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/10 transition hover:from-blue-500 hover:to-violet-500 active:scale-95 flex-1 sm:flex-initial">
+                                    <Edit3 size={16} />
+                                    <span>Chỉnh sửa</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 

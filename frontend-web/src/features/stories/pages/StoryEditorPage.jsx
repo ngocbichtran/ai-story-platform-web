@@ -11,6 +11,7 @@ export default function StoryEditorPage() {
 
     const navigate = useNavigate();
     const { storyId } = useParams();
+    console.log("🔥 STORY ID:", storyId);
     useEffect(() => {
         if (!selectedChapter) return;
 

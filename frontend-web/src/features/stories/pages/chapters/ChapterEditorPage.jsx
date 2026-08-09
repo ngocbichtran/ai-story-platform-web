@@ -2,8 +2,11 @@ import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { PanelRight, CalendarDays, FileText, ChevronLeft, ChevronRight, Wand2, Save, Loader2, Sparkles, BookOpen, BrainCircuit, History, RotateCcw, X, PenLine, Trash2, Copy, Check } from "lucide-react";
+import { PanelRight, CalendarDays, FileText, ChevronLeft, ChevronRight, Wand2, Save, Loader2, Sparkles, BookOpen, History, RotateCcw, X, PenLine, Check, Copy, Trash2 } from "lucide-react";
 import RightSidebar from "../../components/RightSidebar";
+
+// 🟢 Định nghĩa Base URL cho Localhost
+const API_BASE_URL = "https://api.baostory.fun/api";
 
 export default function ChapterEditorPage() {
     const { storyId, chapterNumber } = useParams();
@@ -13,13 +16,6 @@ export default function ChapterEditorPage() {
     const [isRightOpen, setIsRightOpen] = useState(false);
     const [showAISidebar, setShowAISidebar] = useState(true);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-
-    // STATE CHO POPUP BIÊN TẬP VĂN PHONG
-    const [isRewriteOpen, setIsRewriteOpen] = useState(false);
-    const [rewriteInput, setRewriteInput] = useState("");
-    const [rewriteOutput, setRewriteOutput] = useState("");
-    const [isRewriteLoading, setIsRewriteLoading] = useState(false);
-    const [isCopied, setIsCopied] = useState(false);
 
     // CHAPTER DATA State
     const [chapter, setChapter] = useState(null);
@@ -38,16 +34,13 @@ export default function ChapterEditorPage() {
     const [loading, setLoading] = useState(true);
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
     const [isAILoading, setIsAILoading] = useState(false);
+    const [isPlotLoading, setIsPlotLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
     // REF CHO AUTOSAVE DEBOUNCE
     const autoSaveTimerRef = useRef(null);
 
     const wordCount = content.trim() ? content.trim().split(/\s+/).filter(Boolean).length : 0;
-
-    const getPopupWordCount = (text) => {
-        return text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
-    };
 
     // =========================================================================
     // 1. API: TẢI THÔNG TIN CHƯƠNG TỪ BACKEND
@@ -58,7 +51,7 @@ export default function ChapterEditorPage() {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const res = await axios.get(`https://api.baostory.fun/api/chapters/display-chapter/${storyId}/${chapterNumber}`, config);
+            const res = await axios.get(`${API_BASE_URL}/chapters/display-chapter/${storyId}/${chapterNumber}`, config);
             const data = res.data.data || {};
 
             setChapter(data);
@@ -92,7 +85,7 @@ export default function ChapterEditorPage() {
                 content: content,
             };
 
-            const res = await axios.put(`https://api.baostory.fun/api/chapters/edit/${storyId}/${chapterNumber}`, payload, config);
+            const res = await axios.put(`${API_BASE_URL}/chapters/edit/${storyId}/${chapterNumber}`, payload, config);
 
             if (res.data.success) {
                 toast.success("Đã lưu nội dung chương thành công!");
@@ -109,9 +102,6 @@ export default function ChapterEditorPage() {
         }
     };
 
-    // =========================================================================
-    // LẤY GIỜ THỰC TẾ TRỰC TIẾP TỪ MÁY TÍNH
-    // =========================================================================
     const formatTime = (rawDate) => {
         const dt = rawDate ? new Date(rawDate) : new Date();
         if (isNaN(dt.getTime())) return "Vừa xong";
@@ -146,25 +136,22 @@ export default function ChapterEditorPage() {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const res = await axios.put(`https://api.baostory.fun/api/chapters/autosave/${storyId}/${chapterNumber}`, { content: contentToSave }, config);
+            const res = await axios.put(`${API_BASE_URL}/chapters/autosave/${storyId}/${chapterNumber}`, { content: contentToSave }, config);
 
             if (res.data.success) {
                 let serverText = res.data.data?.savedAtText || "";
 
-                //TỰ ĐỘNG BÙ TRỪ 7 TIẾNG CHO CHUỖI GIỜ TỪ SERVER TRẢ VỀ NẾU BỊ LỆCH
                 if (serverText) {
-                    // Dùng Regex tìm định dạng giờ dạng HH:mm:ss trong chuỗi của server
                     serverText = serverText.replace(/\d{2}:\d{2}:\d{2}/, (match) => {
                         const [h, m, s] = match.split(":").map(Number);
                         const date = new Date();
-                        date.setHours(h + 7, m, s); // Cộng bù 7 tiếng trực tiếp
+                        date.setHours(h + 7, m, s);
                         return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}:${String(date.getSeconds()).padStart(2, "0")}`;
                     });
                 }
 
                 setAutoSaveStatus(serverText || "Đã lưu nháp tự động");
 
-                // Lấy giờ hiện tại của máy tính cho phần Cập nhật bên trái
                 const now = new Date();
                 const hours = String(now.getHours()).padStart(2, "0");
                 const minutes = String(now.getMinutes()).padStart(2, "0");
@@ -205,7 +192,7 @@ export default function ChapterEditorPage() {
                 params: { storyId, chapterNumber },
             };
 
-            const res = await axios.get(`https://api.baostory.fun/api/chapters/history`, config);
+            const res = await axios.get(`${API_BASE_URL}/chapters/history`, config);
             const historyData = res.data.data || [];
 
             const formattedHistory = historyData.map((ver) => ({
@@ -242,7 +229,7 @@ export default function ChapterEditorPage() {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            await axios.put(`https://api.baostory.fun/api/chapters/restore/${storyId}/${chapterNumber}`, { content: ver.content }, config);
+            await axios.put(`${API_BASE_URL}/chapters/restore/${storyId}/${chapterNumber}`, { content: ver.content }, config);
             setAutoSaveStatus("Đã khôi phục và đồng bộ");
             setUpdatedAt(formatShortTime(new Date()));
         } catch (err) {
@@ -252,7 +239,7 @@ export default function ChapterEditorPage() {
     };
 
     // =========================================================================
-    // AI BIÊN TẬP & SỬA LỖI CHÍNH TẢ
+    // AI KIỂM TRA CHÍNH TẢ
     // =========================================================================
     const handleAIEnhance = async () => {
         if (!storyId || !chapterNumber) return;
@@ -269,7 +256,7 @@ export default function ChapterEditorPage() {
                 chapterNumber: Number(chapterNumber),
             };
 
-            const requestUrl = `https://api.baostory.fun/api/chapters/ai/${chapterNumber}/spell-check`;
+            const requestUrl = `${API_BASE_URL}/chapters/ai/${chapterNumber}/spell-check`;
             const response = await axios.post(requestUrl, payload, config);
 
             if (response.data && response.data.success === true) {
@@ -308,34 +295,64 @@ export default function ChapterEditorPage() {
         }
     };
 
-    const handleEnhance = () => {
-        if (!rewriteInput.trim()) {
-            toast.error("Vui lòng nhập đoạn văn bản cần biên tập!");
-            return;
-        }
-        setIsRewriteLoading(true);
-        setTimeout(() => {
-            setRewriteOutput(`[AI Đã tối ưu] ${rewriteInput}\n\n(Văn phong đã được trau chuốt lại mượt mà hơn, sửa các lỗi lặp từ và tối ưu cấu trúc câu theo phong cách chuyên nghiệp.)`);
-            setIsRewriteLoading(false);
-            toast.success("Biên tập văn phong thành công!");
-        }, 1200);
-    };
+    // =========================================================================
+    // AI GỢI Ý NỘI DUNG CHƯƠNG (Đã đồng bộ dùng API_BASE_URL)
+    // =========================================================================
+    const handlePlotSuggest = async () => {
+        if (!storyId || !chapterNumber) return;
 
-    const handleClearPopup = () => {
-        setRewriteInput("");
-        setRewriteOutput("");
-        toast.success("Đã xóa nội dung!");
-    };
-
-    const handleCopyPopup = async () => {
-        if (!rewriteOutput) return;
         try {
-            await navigator.clipboard.writeText(rewriteOutput);
-            setIsCopied(true);
-            toast.success("Đã copy kết quả vào Clipboard!");
-            setTimeout(() => setIsCopied(false), 2000);
-        } catch (err) {
-            toast.error("Không thể copy văn bản.");
+            setIsPlotLoading(true);
+            const token = localStorage.getItem("token");
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+
+            // 🟢 Bước 1: Kiểm tra nhanh phía Frontend xem đã có kế hoạch cho chương hiện tại hay chưa
+            try {
+                const planRes = await axios.get(`${API_BASE_URL}/chapterPlan/stories/${storyId}`, config);
+                const planList = planRes.data?.success ? (Array.isArray(planRes.data.data) ? planRes.data.data : []) : [];
+
+                // Tìm xem có kế hoạch của chương hiện tại chưa
+                const currentChapterPlan = planList.find((p) => Number(p.chapterNumber) === Number(chapterNumber));
+
+                if (planList.length === 0 || !currentChapterPlan || (!currentChapterPlan.summary && !currentChapterPlan.purpose && !currentChapterPlan.conflict && !currentChapterPlan.endingHook)) {
+                    toast.error(`Vui lòng bổ sung đầy đủ kế hoạch cho Chương ${chapterNumber} trước khi sử dụng tính năng gợi ý từ AI!`);
+                    setIsPlotLoading(false);
+                    return;
+                }
+            } catch (planErr) {
+                console.error("Lỗi khi kiểm tra kế hoạch chương:", planErr);
+                // Nếu kiểm tra phụ này lỗi, ta vẫn có thể bỏ qua và đẩy thẳng xuống Backend để Backend kiểm tra toàn diện bằng các "vệ binh" Outline, Characters,...
+            }
+
+            setShowAISidebar(true);
+
+            const payload = {
+                storyId: Number(storyId),
+                chapterNumber: Number(chapterNumber),
+                currentContent: content || "",
+            };
+
+            // Gọi API Backend (Backend sẽ kiểm tra tiếp Outline, Nhân vật, Nội dung chương trước...)
+            const response = await axios.post(`${API_BASE_URL}/chapters/ai/${chapterNumber}/plot-suggestion`, payload, config);
+
+            if (response.data?.success === true) {
+                const suggestionText = response.data?.data?.content;
+
+                if (typeof suggestionText === "string" && suggestionText.trim()) {
+                    setOutlineAIResult(suggestionText.trim());
+                    toast.success("Gợi ý nội dung thành công!");
+                } else {
+                    toast.error("AI không trả về nội dung.");
+                }
+            } else {
+                toast.error(response.data?.message || "Không thể tạo gợi ý nội dung.");
+            }
+        } catch (error) {
+            console.error("❌ Lỗi gợi ý nội dung chương:", error);
+            // 🟢 Toast này sẽ lấy chính xác message lỗi cụ thể từ Backend trả về (Ví dụ: Thiếu Outline, Thiếu Nhân vật, Chương trước trống...)
+            toast.error(error.response?.data?.message || "Không thể kết nối với hệ thống AI.");
+        } finally {
+            setIsPlotLoading(false);
         }
     };
 
@@ -394,14 +411,18 @@ export default function ChapterEditorPage() {
                             )}
                         </button>
 
-                        <button onClick={() => setIsRewriteOpen(true)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 font-bold text-xs transition-all duration-200 active:scale-95">
-                            <PenLine size={14} className="text-amber-400" />
-                            <span>Biên tập văn phong</span>
-                        </button>
-
-                        <button onClick={() => setIsRightOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 font-bold text-xs transition-all duration-200 active:scale-95">
-                            <PanelRight size={14} />
-                            <span>Tra cứu</span>
+                        <button onClick={handlePlotSuggest} disabled={isPlotLoading} className="px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2 active:scale-95 shadow-md bg-gradient-to-r from-blue-600 to-violet-600 text-white hover:from-blue-500 hover:to-violet-500 border border-white/10 shadow-blue-500/10 disabled:opacity-50">
+                            {isPlotLoading ? (
+                                <>
+                                    <Loader2 size={14} className="animate-spin" />
+                                    <span>AI đang viết gợi ý...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles size={14} />
+                                    <span>Gợi ý nội dung chương</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -552,7 +573,7 @@ export default function ChapterEditorPage() {
                                                         handleRestoreVersion(ver);
                                                     }}
                                                     disabled={isCurrentActive}
-                                                    className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border transition-all active:scale-95 ${isCurrentActive ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20 cursor-default opacity-80" : isDraftItem ? "text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20" : "text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/10"}`}
+                                                    className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border transition-all active:scale-95 ${isCurrentActive ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20 cursor-default opacity-80" : isDraftItem ? "text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20" : "text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/10 hover:border-amber-500/20"}`}
                                                 >
                                                     <RotateCcw size={12} />
                                                     <span>{isCurrentActive ? "Bản hiện tại" : "Khôi phục"}</span>
@@ -568,82 +589,6 @@ export default function ChapterEditorPage() {
             </div>
 
             <RightSidebar isOpen={isRightOpen} setIsOpen={setIsRightOpen} />
-
-            {/* POPUP / MODAL: BIÊN TẬP VĂN PHONG */}
-            {isRewriteOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-                    <div className="w-full max-w-[1000px] h-[400px] bg-[#10151E] border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/20 select-none flex-none">
-                            <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
-                                <Sparkles size={16} className="text-amber-400" />
-                                <span>Biên tập văn phong</span>
-                            </div>
-                            <button onClick={() => setIsRewriteOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 flex flex-row min-h-0 divide-x divide-white/5">
-                            <div className="flex-1 flex flex-col min-w-0 h-full bg-[#0d121f]/20">
-                                <div className="px-5 py-2.5 text-xs font-semibold text-slate-400 select-none border-b border-white/5">Văn bản gốc</div>
-                                <div className="flex-1 p-4">
-                                    <textarea value={rewriteInput} onChange={(e) => setRewriteInput(e.target.value)} placeholder="Người dùng nhập đoạn văn tại đây..." className="w-full h-full bg-black/20 border border-white/5 rounded-xl p-4 text-slate-200 text-sm leading-relaxed placeholder-slate-700 resize-none focus:outline-none focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20 custom-scroll transition-all" />
-                                </div>
-                                <div className="px-5 py-3 border-t border-white/5 flex items-center justify-between bg-black/10 select-none flex-none">
-                                    <span className="text-xs text-slate-500">
-                                        <b className="text-slate-400 font-medium">{getPopupWordCount(rewriteInput)}</b> từ
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={handleClearPopup} disabled={!rewriteInput} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-rose-400 bg-white/5 hover:bg-rose-500/10 rounded-lg border border-white/5 hover:border-rose-500/20 transition-all disabled:opacity-30 disabled:pointer-events-none">
-                                            <Trash2 size={13} />
-                                            <span>Xóa</span>
-                                        </button>
-                                        <button onClick={handleEnhance} disabled={isRewriteLoading || !rewriteInput.trim()} className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-all shadow-md shadow-blue-600/10 active:scale-95 disabled:opacity-40 disabled:pointer-events-none">
-                                            {isRewriteLoading ? (
-                                                <>
-                                                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                    <span>Đang xử lý...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Wand2 size={13} />
-                                                    <span>Biên tập</span>
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex-1 flex flex-col min-w-0 h-full">
-                                <div className="px-5 py-2.5 text-xs font-semibold text-amber-400/90 select-none border-b border-white/5 flex items-center gap-1.5 bg-amber-500/[0.02]">
-                                    <Sparkles size={12} />
-                                    <span>BaoStory gợi ý!</span>
-                                </div>
-                                <div className="flex-1 p-4">
-                                    {rewriteOutput ? (
-                                        <textarea readOnly value={rewriteOutput} className="w-full h-full bg-black/40 border border-amber-500/10 rounded-xl p-4 text-slate-300 text-sm leading-relaxed resize-none focus:outline-none custom-scroll selection:bg-amber-500/10" />
-                                    ) : (
-                                        <div className="w-full h-full bg-black/10 border border-dashed border-white/5 rounded-xl flex flex-col items-center justify-center text-xs text-slate-500 italic select-none p-6 text-center gap-2">
-                                            <Wand2 size={20} className="text-slate-600 animate-pulse" />
-                                            <span>AI biên tập sẽ hiển thị ở đây</span>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="px-5 py-3 border-t border-white/5 flex items-center justify-between bg-black/10 select-none flex-none">
-                                    <span className="text-xs text-slate-500">
-                                        <b className="text-slate-400 font-medium">{getPopupWordCount(rewriteOutput)}</b> từ
-                                    </span>
-                                    <button onClick={handleCopyPopup} disabled={!rewriteOutput} className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg border transition-all active:scale-95 disabled:opacity-30 disabled:pointer-events-none ${isCopied ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" : "text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/10 hover:border-amber-500/20"}`}>
-                                        {isCopied ? <Check size={13} /> : <Copy size={13} />}
-                                        <span>{isCopied ? "Đã sao chép" : "Copy kết quả"}</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </section>
     );
 }

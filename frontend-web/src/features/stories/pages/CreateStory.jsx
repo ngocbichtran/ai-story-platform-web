@@ -23,6 +23,7 @@ export default function CreateStory() {
     const [coverPreview, setCoverPreview] = useState(null);
     const [coverFile, setCoverFile] = useState(null);
     const [isReversing, setIsReversing] = useState(false);
+    const DEFAULT_COVERS = ["https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=500&auto=format&fit=crop&q=60", "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&auto=format&fit=crop&q=60", "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=500&auto=format&fit=crop&q=60", "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=500&auto=format&fit=crop&q=60"];
     // Lấy danh sách thể loại
     const fetchGenres = async () => {
         try {
@@ -116,7 +117,11 @@ export default function CreateStory() {
             return [...prev, genre];
         });
     };
-
+    // Xử lý khi chọn ảnh mẫu có sẵn
+    const handleSelectDefaultCover = (url) => {
+        setCoverPreview(url);
+        setCoverFile(null); // QUAN TRỌNG: Xóa file upload từ máy đi vì đang dùng ảnh mẫu
+    };
     const handleCoverChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -221,11 +226,13 @@ export default function CreateStory() {
         const genreIds = selectedGenres.map((g) => g.id);
         const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
         const localPath = `/baostory/workspace/stories/${slug}`;
+
         return {
             title: title,
             description: summary,
             local_folder_path: localPath,
             genre_ids: genreIds,
+            cover_image: coverPreview, // 👈 Thêm dòng này để gửi URL ảnh mẫu hoặc ảnh preview lên server
         };
     };
     // Tạo truyện mới
@@ -268,7 +275,7 @@ export default function CreateStory() {
     };
 
     return (
-        <div className="min-h-screen bg-[#0B1120] text-white relative overflow-hidden flex flex-col justify-between">
+        <div className="min-h-screen bg-[#0B1120] text-white relative overflow-hidden custom-scroll flex flex-col justify-between">
             {/* BACKGROUND DECORATION */}
             <div className="absolute top-20 left-20 w-96 h-96 bg-blue-600/10 blur-[120px] pointer-events-none" />
             <div className="absolute bottom-20 right-20 w-96 h-96 bg-violet-600/10 blur-[120px] pointer-events-none" />
@@ -309,13 +316,49 @@ export default function CreateStory() {
                                 </div>
 
                                 {/* Ảnh bìa */}
-                                <div className="flex items-center gap-4">
-                                    <label className="w-24 shrink-0 text-sm font-medium text-slate-300">Ảnh bìa</label>
-                                    <div className="flex flex-1 items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-                                        <span className="truncate text-sm text-slate-400">{coverFile ? coverFile.name : "Chưa chọn tệp"}</span>
-                                        <label className="cursor-pointer rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-500">
-                                            Chọn ảnh
-                                            <input type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-sm font-medium text-slate-300">Ảnh bìa tác phẩm</label>
+                                        <span className="text-xs text-slate-500">Chọn mẫu có sẵn hoặc tải ảnh lên</span>
+                                    </div>
+
+                                    {/* 4 Ảnh bìa mặc định */}
+                                    <div className="grid grid-cols-4 gap-3">
+                                        {DEFAULT_COVERS.map((url, index) => {
+                                            const isSelected = coverPreview === url;
+                                            return (
+                                                <div
+                                                    key={index}
+                                                    onClick={() => handleSelectDefaultCover(url)} // Gọi hàm ở đây
+                                                    className={`relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${isSelected ? "border-violet-500 shadow-lg shadow-violet-500/20 scale-[1.02]" : "border-white/10 hover:border-white/30 opacity-70 hover:opacity-100"}`}
+                                                >
+                                                    <img src={url} alt={`Mẫu ${index + 1}`} className="w-full h-full object-cover" />
+                                                    {isSelected && (
+                                                        <div className="absolute inset-0 bg-violet-600/30 flex items-center justify-center backdrop-blur-[2px]">
+                                                            <span className="bg-violet-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">Đang chọn</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Nút tải ảnh tùy chỉnh từ thiết bị */}
+                                    <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 mt-1">
+                                        <span className="truncate text-sm text-slate-400">{coverFile ? `File: ${coverFile.name}` : "Hoặc tải ảnh từ thiết bị của bạn"}</span>
+                                        <label className="cursor-pointer rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium hover:bg-violet-500 transition shadow-md">
+                                            Tải lên ảnh khác
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files[0];
+                                                    if (!file) return;
+                                                    setCoverFile(file);
+                                                    setCoverPreview(URL.createObjectURL(file));
+                                                }}
+                                            />
                                         </label>
                                     </div>
                                 </div>

@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { Plus, BookOpen, Loader2, Trash2 } from "lucide-react";
+import { Plus, BookOpen, Loader2 } from "lucide-react";
 import banner from "../../assets/images/banner.png";
 import toast from "react-hot-toast";
 import axios from "axios";
+import CustomModal from "../styles/CustomModal";
 
 export default function Home() {
     const { search } = useOutletContext();
     const [stories, setStories] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-
-    // State quản lý xóa truyện
     const [deletingId, setDeletingId] = useState(null);
+
+    // State quản lý Modal Xóa
+    const [storyToDelete, setStoryToDelete] = useState(null);
 
     // Lấy danh sách truyện của riêng tác giả
     const fetchStoriesData = async () => {
@@ -19,7 +21,6 @@ export default function Home() {
             setIsLoading(true);
             const token = localStorage.getItem("token");
 
-            // Gọi đúng endpoint lấy danh sách truyện /api/stories/list của tác giả
             const response = await axios.get("https://api.baostory.fun/api/stories/list", {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -41,19 +42,15 @@ export default function Home() {
         fetchStoriesData();
     }, []);
 
-    // =========================================================================
-    // XỬ LÝ XÓA TÁC PHẨM THỰC TẾ
-    // =========================================================================
-    const handleDeleteStory = async (storyId, storyTitle) => {
-        // Hộp thoại xác nhận native nhanh để bảo vệ tác giả
-        const confirmDelete = window.confirm(`Bạn có chắc chắn muốn xóa tác phẩm "${storyTitle}" không? Hành động này không thể hoàn tác.`);
-        if (!confirmDelete) return;
+    // Hàm thực thi gọi API xóa sau khi bấm Xác nhận trên Modal
+    const confirmDeleteStory = async () => {
+        if (!storyToDelete) return;
 
         try {
-            setDeletingId(storyId);
+            setDeletingId(storyToDelete.id);
             const token = localStorage.getItem("token");
 
-            const response = await axios.delete(`https://api.baostory.fun/api/stories/${storyId}`, {
+            const response = await axios.delete(`https://api.baostory.fun/api/stories/${storyToDelete.id}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -61,14 +58,14 @@ export default function Home() {
 
             if (response.data.success) {
                 toast.success("Xóa tác phẩm thành công!");
-                // Cập nhật lại UI lập tức mà không cần reload trang
-                setStories((prev) => prev.filter((story) => story.id !== storyId));
+                setStories((prev) => prev.filter((story) => story.id !== storyToDelete.id));
             }
         } catch (error) {
             console.error("Lỗi khi xóa tác phẩm:", error);
             toast.error(error.response?.data?.message || "Xóa tác phẩm thất bại.");
         } finally {
             setDeletingId(null);
+            setStoryToDelete(null); // Đóng modal
         }
     };
 
@@ -77,7 +74,7 @@ export default function Home() {
     });
 
     return (
-        <div className="space-y-8">
+        <div className="relative min-h-screen space-y-8">
             {/* BANNER BAN ĐẦU */}
             <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/5 backdrop-blur-xl animate-fadeIn">
                 <img src={banner} alt="Banner" className="w-full h-[380px] object-cover opacity-90 hover:scale-[1.02] transition-transform duration-[4000ms]" />
@@ -86,10 +83,17 @@ export default function Home() {
                     <div className="max-w-2xl">
                         <h2 className="text-4xl md:text-5xl font-black leading-tight mb-4">Có những thế giới chỉ tồn tại khi bạn bắt đầu viết.</h2>
                         <p className="text-slate-300 text-lg leading-relaxed mb-6">Người kể chuyện xứng đáng có một người đồng hành.</p>
-                        <Link to="/stories/create" className="inline-flex items-center gap-2 h-12 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 hover:scale-105 text-white font-semibold shadow-2xl transition-all duration-300">
-                            <Plus className="w-4 h-4" />
-                            Tạo truyện mới
-                        </Link>
+
+                        <div className="flex items-center gap-4">
+                            <Link to="/stories/create" className="inline-flex items-center gap-2 h-12 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 hover:scale-105 text-white font-semibold shadow-2xl transition-all duration-300">
+                                <Plus className="w-4 h-4" />
+                                Tạo truyện mới
+                            </Link>
+
+                            <Link to="/stories/derivative/create" className="inline-flex items-center gap-2 h-12 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 hover:scale-105 text-white font-semibold shadow-2xl transition-all duration-300">
+                                <Plus className="w-4 h-4" /> Tạo truyện phái sinh
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -136,12 +140,12 @@ export default function Home() {
 
                                 {/* HÀNG THÔNG TIN DƯỚI ĐÁY VÀ NÚT BẤM CHUYỂN HƯỚNG */}
                                 <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/5">
-                                    {/* NÚT XÓA (DESIGN MỚI: SANG TRỌNG & TINH TẾ) */}
-                                    <button onClick={() => handleDeleteStory(story.id, story.title)} disabled={deletingId === story.id} className="group/btn-delete h-9 px-4 rounded-xl border border-white/5 bg-white/5 text-slate-400 text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 hover:shadow-[0_0_15px_rgba(239,68,68,0.1)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95">
+                                    {/* NÚT XÓA KÍCH HOẠT MODAL */}
+                                    <button onClick={() => setStoryToDelete(story)} disabled={deletingId === story.id} className="group/btn-delete h-9 px-4 rounded-xl border border-white/5 bg-white/5 text-slate-400 text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 hover:shadow-[0_0_15px_rgba(239,68,68,0.1)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95">
                                         <span>{deletingId === story.id ? "Đang xóa..." : "Xóa"}</span>
                                     </button>
 
-                                    {/* NÚT ĐIỀU HƯỚNG WORKSPACE (DESIGN MỚI: NỔI BẬT & ĐỔ BÓNG NỀN TỐI) */}
+                                    {/* NÚT ĐIỀU HƯỚNG WORKSPACE */}
                                     <Link to={`/stories/${story.id}/editor`} className={`h-9 px-4 rounded-xl text-xs font-bold flex items-center justify-center transition-all duration-300 active:scale-95 ${story.status === "PUBLISHED" ? "border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white" : "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/10 hover:scale-[1.03] hover:shadow-xl hover:shadow-blue-500/20"}`}>
                                         {story.status === "PUBLISHED" ? "Sửa tác phẩm" : "Viết tiếp"}
                                     </Link>
@@ -155,6 +159,9 @@ export default function Home() {
                     <p className="text-slate-400 text-sm italic">Không có tác phẩm nào trong thư viện của bạn.</p>
                 </div>
             )}
+
+            {/* CUSTOM MODAL XÁC NHẬN XÓA */}
+            <CustomModal isOpen={!!storyToDelete} onClose={() => setStoryToDelete(null)} onConfirm={confirmDeleteStory} title="Xác nhận xóa tác phẩm" message={`Bạn có chắc chắn muốn xóa vĩnh viễn tác phẩm "${storyToDelete?.title}" không? Hành động này không thể hoàn tác.`} confirmText="Xóa tác phẩm" cancelText="Hủy" type="danger" />
         </div>
     );
 }

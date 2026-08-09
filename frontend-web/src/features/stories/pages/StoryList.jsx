@@ -1,37 +1,32 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { BookOpen, Edit3, Plus, Loader2, Trash2 } from "lucide-react";
+import { BookOpen, Plus, Loader2, Trash2, Download, Layers } from "lucide-react";
 import toast from "react-hot-toast";
 import axios from "axios";
+import CustomModal from "../../styles/CustomModal";
 
 export default function StoryList() {
     const { search } = useOutletContext();
-
-    // =========================
-    // STATE DỮ LIỆU THỰC TẾ
-    // =========================
     const [stories, setStories] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [deletingId, setDeletingId] = useState(null); // Quản lý hiệu ứng loading khi xóa truyện
+    const [deletingId, setDeletingId] = useState(null);
+    const [downloadingId, setDownloadingId] = useState(null);
+    const [activeTab, setActiveTab] = useState("regular"); // 'regular' hoặc 'derivative'
 
-    // =========================
-    // API: TẢI DANH SÁCH TRUYỆN
-    // =========================
+    // State quản lý Modal Xóa
+    const [storyToDelete, setStoryToDelete] = useState(null); // Lưu thông tin truyện chuẩn bị xóa
+
     const fetchStoriesData = async () => {
         try {
             setIsLoading(true);
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
-
-            // Gọi chuẩn đường dẫn lấy danh sách truyện của riêng tác giả đang đăng nhập
             const response = await axios.get("https://api.baostory.fun/api/stories/list", config);
-
             if (response.data.success) {
                 setStories(response.data.data || []);
             }
         } catch (error) {
-            console.error("Lỗi kết nối API lấy danh sách truyện:", error);
-            toast.error("Không thể tải danh sách tác phẩm từ thư viện.");
+            toast.error("Không thể tải danh sách tác phẩm.");
         } finally {
             setIsLoading(false);
         }
@@ -41,113 +36,138 @@ export default function StoryList() {
         fetchStoriesData();
     }, []);
 
-    // =========================================================================
-    // API: XỬ LÝ XÓA MỀM TÁC PHẨM
-    // =========================================================================
-    const handleDeleteStory = async (storyId, storyTitle) => {
-        const confirmDelete = window.confirm(`Bạn có chắc chắn muốn xóa tác phẩm "${storyTitle}" không? Hành động này không thể hoàn tác.`);
-        if (!confirmDelete) return;
+    // Lọc truyện Gốc vs Phái sinh (Hỗ trợ kiểm tra linh hoạt các tên trường id gốc)
+    const filteredStories = useMemo(() => {
+        const lowerSearch = search.toLowerCase();
+        return stories.filter((story) => {
+            const matchesSearch = story.title?.toLowerCase().includes(lowerSearch) || story.description?.toLowerCase().includes(lowerSearch);
+            const isDerivative = !!(story.original_story_id || story.originalStoryId || story.original_id);
+            return matchesSearch && (activeTab === "regular" ? !isDerivative : isDerivative);
+        });
+    }, [stories, search, activeTab]);
 
+    const handleDownloadStory = async (storyId, storyTitle) => {
         try {
-            setDeletingId(storyId);
+            setDownloadingId(storyId);
+            toast.loading(`Đang tổng hợp "${storyTitle}"...`, { id: "downloading" });
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const response = await axios.delete(`https://api.baostory.fun/api/stories/${storyId}`, config);
+            const chaptersRes = await axios.get(`https://api.baostory.fun/api/chapters/story/${storyId}/chapters`, config);
+            const chaptersList = chaptersRes.data?.data || [];
+            chaptersList.sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
 
-            if (response.data.success) {
-                toast.success("Xóa tác phẩm thành công!");
-                // Khấu trừ bộ nhớ state ảo ngay lập tức mà không cần gọi lại toàn bộ API
-                setStories((prev) => prev.filter((story) => story.id !== storyId));
+            let allChaptersHtml = "";
+            for (const ch of chaptersList) {
+                const chNum = ch.chapterNumber || 1;
+                const detailRes = await axios.get(`https://api.baostory.fun/api/chapters/display-chapter/${storyId}/${chNum}`, config);
+                const chContent = detailRes.data?.data?.displayContent || "";
+                allChaptersHtml += `<h2 style="page-break-before: always;">Chương ${chNum}: ${ch.title || ""}</h2><p>${chContent.replace(/\n/g, "</p><p>")}</p>`;
             }
-        } catch (error) {
-            console.error("Lỗi khi xóa tác phẩm:", error);
-            toast.error(error.response?.data?.message || "Xóa tác phẩm thất bại.");
+
+            const fullWordHtml = `<html><head><meta charset='utf-8'></head><body><h1>${storyTitle}</h1>${allChaptersHtml}</body></html>`;
+            const blob = new Blob(["\ufeff" + fullWordHtml], { type: "application/msword" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${storyTitle}-full.doc`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.dismiss("downloading");
+            toast.success("Tải xuống thành công!");
+        } catch (err) {
+            toast.dismiss("downloading");
+            toast.error("Lỗi khi tải truyện.");
         } finally {
-            setDeletingId(null);
+            setDownloadingId(null);
         }
     };
 
-    // Bộ lọc tìm kiếm đồng bộ theo thời gian thực (Description/Title)
-    const filteredStories = stories.filter((story) => {
-        return story.title?.toLowerCase().includes(search.toLowerCase()) || story.description?.toLowerCase().includes(search.toLowerCase());
-    });
+    // Hàm thực thi gọi API xóa sau khi người dùng bấm Xác nhận trên Modal
+    const confirmDeleteStory = async () => {
+        if (!storyToDelete) return;
+
+        try {
+            setDeletingId(storyToDelete.id);
+            await axios.delete(`https://api.baostory.fun/api/stories/${storyToDelete.id}`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+            });
+            setStories((prev) => prev.filter((s) => s.id !== storyToDelete.id));
+            toast.success("Đã xóa tác phẩm thành công!");
+        } catch (err) {
+            toast.error("Xóa thất bại.");
+        } finally {
+            setDeletingId(null);
+            setStoryToDelete(null); // Đóng modal và reset state
+        }
+    };
 
     return (
-        /* KHUNG CHỨA LỚN:*/
-        <div className="bg-[#0B1120]/70 backdrop-blur-md border border-white/10 rounded-[32px] p-6 md:p-8 shadow-2xl relative z-10">
-            {/* THÔNG TIN TIÊU ĐỀ KHO TRUYỆN */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6 gap-4">
-                <div>
-                    <h1 className="text-xl md:text-2xl font-black text-white">Kho Truyện Của Bạn</h1>
+        /* 🟢 1. THẺ BỌC NGOÀI CÙNG CHO TOÀN BỘ TRANG */
+        <div className="relative min-h-screen">
+            {/* 2. KHUNG NỘI DUNG CHÍNH (Kho Truyện) */}
+            <div className="bg-[#0B1120]/70 backdrop-blur-md border border-white/10 rounded-[32px] p-8 shadow-2xl relative z-10">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+                    <h1 className="text-2xl font-black text-white">Kho Truyện Của Bạn</h1>
+
+                    {/* Cụm nút hành động góc phải */}
+                    <div className="flex items-center gap-2">
+                        <Link to="/stories/create" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-500 transition shadow-lg shadow-blue-600/10 active:scale-95">
+                            <Plus size={14} /> Tạo truyện mới
+                        </Link>
+
+                        <Link to="/stories/derivative/create" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 text-white font-bold text-xs hover:bg-violet-500 transition shadow-lg shadow-violet-600/10 active:scale-95">
+                            <Plus className="w-4 h-4" /> Tạo truyện phái sinh
+                        </Link>
+                    </div>
                 </div>
 
-                {/* KHU VỰC CÁC NÚT HÀNH ĐỘNG GÓC PHẢI */}
-                <div className="flex items-center gap-3 shrink-0">
-                    {/* Badge đếm số truyện */}
-                    <p className="text-xs font-bold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-3 py-2 rounded-xl backdrop-blur-sm shadow-sm hidden sm:block">{isLoading ? "..." : `${filteredStories.length} Truyện`}</p>
-
-                    {/* NÚT TẠO TRUYỆN MỚI  */}
-                    <Link to="/stories/create" className="inline-flex items-center gap-1.5 text-xs font-bold h-9.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 hover:scale-105 active:scale-95 text-white shadow-lg shadow-blue-500/10 transition-all duration-200">
-                        <Plus className="w-3.5 h-3.5" />
-                        Tạo truyện mới
-                    </Link>
+                {/* TAB LỌC */}
+                <div className="flex gap-2 mb-6">
+                    <button onClick={() => setActiveTab("regular")} className={`px-4 py-2 rounded-xl text-xs font-bold transition ${activeTab === "regular" ? "bg-violet-600 text-white" : "bg-white/5 text-slate-400"}`}>
+                        Truyện Gốc
+                    </button>
+                    <button onClick={() => setActiveTab("derivative")} className={`px-4 py-2 rounded-xl text-xs font-bold transition ${activeTab === "derivative" ? "bg-violet-600 text-white" : "bg-white/5 text-slate-400"}`}>
+                        Truyện Phái Sinh
+                    </button>
                 </div>
+
+                {isLoading ? (
+                    <div className="flex justify-center py-20">
+                        <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
+                    </div>
+                ) : filteredStories.length > 0 ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {filteredStories.map((story) => (
+                            <div key={story.id} className="flex gap-4 p-4 bg-slate-950/30 border border-white/5 rounded-2xl">
+                                <div className="w-20 h-28 rounded-lg bg-slate-900 overflow-hidden shrink-0 border border-white/10">{story.cover_image && <img src={story.cover_image} className="w-full h-full object-cover" />}</div>
+                                <div className="flex-1 flex flex-col justify-between">
+                                    <h3 className="font-bold text-white text-sm line-clamp-1">{story.title}</h3>
+                                    <p className="text-xs text-slate-400 line-clamp-2">{story.description}</p>
+                                    <div className="flex gap-2 mt-2">
+                                        <button onClick={() => handleDownloadStory(story.id, story.title)} className="p-2 rounded-lg bg-white/5 hover:text-emerald-400 transition" title="Tải xuống">
+                                            <Download size={14} />
+                                        </button>
+                                        {/* Mở Modal Xóa thay cho window.confirm */}
+                                        <button onClick={() => setStoryToDelete(story)} className="p-2 rounded-lg bg-white/5 hover:text-red-400 transition" title="Xóa tác phẩm">
+                                            <Trash2 size={14} />
+                                        </button>
+                                        <Link to={`/stories/${story.id}/editor`} className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold flex items-center">
+                                            Viết tiếp
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-10 text-slate-500 italic">Không tìm thấy truyện nào.</div>
+                )}
             </div>
 
-            {/* DANH SÁCH LƯỚI TRUYỆN HOẶC TRẠNG THÁI LOADING */}
-            {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 bg-slate-950/20 rounded-2xl border border-white/5 backdrop-blur-md">
-                    <Loader2 className="w-8 h-8 text-violet-500 animate-spin mb-2" />
-                    <p className="text-slate-400 text-sm font-medium tracking-wide">Đang tải danh sách tác phẩm từ thư viện...</p>
-                </div>
-            ) : filteredStories.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
-                    {filteredStories.map((story) => (
-                        <div key={story.id} className="group flex items-start gap-4 p-3.5 bg-slate-950/30 backdrop-blur-sm border border-white/5 rounded-2xl hover:border-violet-500/50 hover:bg-slate-950/60 hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300">
-                            {/* 1. KHU VỰC ẢNH BÌA DỌC */}
-                            <div className="w-24 h-32 rounded-xl overflow-hidden bg-slate-900 shrink-0 flex items-center justify-center relative border border-white/10 shadow-lg">
-                                {story.cover_image ? (
-                                    <img src={story.cover_image} alt={story.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-                                ) : (
-                                    <div className="w-full h-full bg-gradient-to-br from-slate-900 to-violet-950 flex flex-col items-center justify-center p-2 text-center select-none">
-                                        <BookOpen className="w-5 h-5 text-violet-400/50 mb-1" />
-                                        <span className="text-[9px] uppercase text-violet-300 font-extrabold line-clamp-2 px-0.5 leading-tight">{story.title}</span>
-                                    </div>
-                                )}
-
-                                {/* BADGE PUBLISHED */}
-                                {story.status === "PUBLISHED" && <div className="absolute top-0 left-0 bg-emerald-500 text-slate-950 font-black text-[9px] tracking-widest px-2 py-0.5 rounded-br-lg uppercase shadow-md z-10">Full</div>}
-                            </div>
-
-                            {/* 2. KHU VỰC NỘI DUNG CHỮ BÊN PHẢI */}
-                            <div className="flex-1 min-w-0 flex flex-col justify-between h-32 py-0.5">
-                                <div className="space-y-1.5">
-                                    <h3 className="text-sm md:text-base font-extrabold text-white group-hover:text-violet-400 transition-colors line-clamp-2 leading-snug tracking-wide" title={story.title}>
-                                        {story.title}
-                                    </h3>
-                                    <p className="text-xs md:text-sm text-slate-300 line-clamp-2 md:line-clamp-3 leading-relaxed font-normal opacity-90">{story.description || "Chưa có mô tả tóm tắt cho bộ truyện này."}</p>
-                                </div>
-
-                                {/* THANH THÔNG TIN VÀ CỤM NÚT BẤM DỒN HẾT VỀ PHÍA PHẢI */}
-                                <div className="flex items-center justify-end gap-3 pt-2 border-t border-white/5">
-                                    {/* NÚT XÓA TÁC PHẨM CAO CẤP */}
-                                    <button onClick={() => handleDeleteStory(story.id, story.title)} disabled={deletingId === story.id} className="group/btn-delete h-8 px-3 rounded-xl border border-white/5 bg-white/5 text-slate-400 text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 hover:shadow-[0_0_15px_rgba(239,68,68,0.1)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95">
-                                        <span>{deletingId === story.id ? "Đang xóa..." : "Xóa"}</span>
-                                    </button>
-
-                                    {/* NÚT VIẾT TIẾP / SỬA TÁC PHẨM */}
-                                    <Link to={`/stories/${story.id}/editor`} className={`h-8 px-3 rounded-xl text-xs font-bold flex items-center justify-center transition-all duration-300 active:scale-95 ${story.status === "PUBLISHED" ? "border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white" : "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/10 hover:scale-[1.03] hover:shadow-xl hover:shadow-blue-500/20"}`}>
-                                        {story.status === "PUBLISHED" ? "Sửa tác phẩm" : "Viết tiếp"}
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-16 text-slate-400 text-sm italic">Không tìm thấy câu chuyện nào phù hợp từ khối thư viện của bạn.</div>
-            )}
+            {/* 🟢 3. ĐƯA CUSTOM MODAL RA NGOÀI KHUNG NỘI DUNG ĐỂ PHỦ KÍN FULL MÀN HÌNH */}
+            <CustomModal isOpen={!!storyToDelete} onClose={() => setStoryToDelete(null)} onConfirm={confirmDeleteStory} title="Xác nhận xóa tác phẩm" message={`Bạn có chắc chắn muốn xóa vĩnh viễn tác phẩm "${storyToDelete?.title}" không? Hành động này không thể hoàn tác.`} confirmText="Xóa tác phẩm" cancelText="Hủy" type="danger" />
         </div>
     );
 }

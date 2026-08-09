@@ -141,6 +141,10 @@ export default function CharacterDetailPage() {
                                                 <span className="font-semibold text-white">{character.name || "Chưa cập nhật"}</span>
                                             </div>
                                             <div className="flex items-center justify-between">
+                                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Loài</span>
+                                                <span className="font-semibold text-white">{character.species || "Chưa cập nhật"}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
                                                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Vai trò</span>
                                                 <span className="font-semibold text-white">{character.role || "Chưa cập nhật"}</span>
                                             </div>
