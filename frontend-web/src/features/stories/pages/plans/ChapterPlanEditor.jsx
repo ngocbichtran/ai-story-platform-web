@@ -164,7 +164,8 @@ export default function ChapterPlanEditor() {
     }, [currentPlan]);
 
     // =====================================================
-    // 3. GỌI AI N8N (TẠO MỚI KẾ HOẠCH KẾ TIẾP & TỰ ĐỘNG TẠO CHƯƠNG)
+    // 3. GỌI AI N8N
+    // TẠO MỚI KẾ HOẠCH KẾ TIẾP & TỰ ĐỘNG TẠO CHƯƠNG
     // =====================================================
 
     const handleAISuggestPlan = async () => {
@@ -173,39 +174,58 @@ export default function ChapterPlanEditor() {
             return;
         }
 
-        // 🟢 Kiểm tra: Nếu đã có kế hoạch trước đó nhưng để trống tóm tắt thì bắt buộc phải điền trước
+        // Kiểm tra các kế hoạch hiện tại
+        // Nếu có kế hoạch chưa hoàn thiện summary thì không cho tạo tiếp
         if (plans.length > 0) {
             const hasEmptySummary = plans.some((p) => !buildChapterSummary(p));
+
             if (hasEmptySummary) {
                 toast.error("Vui lòng hoàn thiện nội dung tóm tắt cho các kế hoạch chương hiện tại trước khi tạo thêm kế hoạch mới!");
-                return; // ⛔ Chặn, không gửi request sang n8n
+                return;
             }
         }
 
         try {
             setIsAILoading(true);
+
             const config = getAuthConfig();
+
+            // Tính chương tiếp theo
             const nextNum = plans.length > 0 ? Math.max(...plans.map((p) => Number(p.chapterNumber) || 0)) + 1 : 1;
 
+            // =====================================================
+            // PAYLOAD GỬI BACKEND
+            // =====================================================
+            // Không cần gửi world.
+            // Backend sẽ tự lấy world từ MongoDB bằng storyId.
             const payload = {
                 storyId: Number(storyId),
                 chapterNumber: Number(nextNum),
             };
 
-            const res = await axios.post(`https://api.baostory.fun/api/chapterPlan/suggest-next`, payload, config);
+            console.log("📤 Payload gửi Backend:", payload);
+
+            const res = await axios.post("https://api.baostory.fun/api/chapterPlan/suggest-next", payload, config);
 
             if (!res.data?.success) {
                 toast.error(res.data?.message || "Không thể tạo kế hoạch chương.");
                 return;
             }
 
-            toast.success(`AI đã tạo kế hoạch và khởi tạo chương mới thành công!`);
+            toast.success("AI đã tạo kế hoạch và khởi tạo chương mới thành công!");
+
+            // Reload danh sách kế hoạch
             await fetchPlans();
 
+            // Chọn kế hoạch vừa tạo
             const newId = res.data?.data?.planId;
-            if (newId) setSelectedPlanId(newId);
+
+            if (newId) {
+                setSelectedPlanId(newId);
+            }
         } catch (err) {
             console.error("❌ LỖI TẠO KẾ HOẠCH:", err.response?.data || err);
+
             toast.error(err.response?.data?.message || "Không thể kết nối tới hệ thống.");
         } finally {
             setIsAILoading(false);
