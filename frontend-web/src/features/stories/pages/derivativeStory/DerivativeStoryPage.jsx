@@ -224,7 +224,7 @@ export default function DerivativeStoryPage() {
                     toast.warning("Dữ liệu n8n trả về trống.");
                 }
             } catch (err) {
-                console.error("Lỗi gọi n8n:", err);
+                console.error("Lỗi khi gọi n8n:", err);
                 toast.error("Không thể kết nối tới hệ thống xử lý n8n.");
             } finally {
                 setIsLoading(false);
@@ -381,7 +381,7 @@ export default function DerivativeStoryPage() {
             navigate("/stories");
         } catch (err) {
             toast.dismiss();
-            console.error("Lỗi khi tạo truyện phái sinh:", err.response?.data || err.message);
+            console.error("Lỗi tạo truyện phái sinh:", err.response?.data || err.message);
             toast.error(err.response?.data?.message || "Lỗi hệ thống khi tạo truyện phái sinh.");
         } finally {
             setIsLoading(false);
