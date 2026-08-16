@@ -15,7 +15,6 @@ export default function DerivativeStoryPage() {
     const [showAcceptModal, setShowAcceptModal] = useState(false);
     const [selectedStory, setSelectedStory] = useState("");
 
-    // Thêm state quản lý danh sách chương nguồn của truyện gốc được chọn
     const [sourceChapters, setSourceChapters] = useState([]);
     const [selectedChapterNumbers, setSelectedChapterNumbers] = useState([]);
     const [isFetchingChapters, setIsFetchingChapters] = useState(false);
@@ -57,11 +56,15 @@ export default function DerivativeStoryPage() {
                 const response = await axios.get("https://api.baostory.fun/api/stories/list", {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                const data = response.data?.data || response.data || [];
-                setStoriesList(data);
+
+                const allStories = response.data?.data || response.data || [];
+
+                // Chỉ giữ lại những truyện đã có ít nhất 1 chương (dựa vào chapter_count trả về từ API)
+                const validStories = allStories.filter((s) => s.chapter_count && s.chapter_count > 0);
+
+                setStoriesList(validStories);
             } catch (err) {
-                console.error(err);
-                toast.error("Không thể tải danh sách truyện hoặc chưa đăng nhập.");
+                toast.error("Không thể tải danh sách truyện.");
             } finally {
                 setIsFetchingStories(false);
             }
@@ -86,48 +89,38 @@ export default function DerivativeStoryPage() {
             const token = localStorage.getItem("accessToken") || localStorage.getItem("token") || "";
             const headers = { Authorization: `Bearer ${token}` };
 
-            // 1. Lấy thông tin chi tiết truyện
             try {
-                const detailRes = await axios.get(`https://api.baostory.fun/api/stories/${selectedStory}`, { headers });
-                setActiveStoryDetail(detailRes.data?.data || detailRes.data);
-            } catch (err) {
-                console.error("Lỗi tải thông tin truyện:", err);
-            }
-
-            // 2. Lấy Outline (Bọc try-catch riêng để không chặn các phần khác nếu lỗi 403)
-            try {
-                const outlineRes = await axios.get(`https://api.baostory.fun/api/storyOutline/${selectedStory}/outline`, { headers });
-                setStoryOutline(outlineRes.data?.data || outlineRes.data);
-            } catch (err) {
-                console.warn("Chưa có outline hoặc lỗi quyền:", err);
-                setStoryOutline(null);
-            }
-
-            // 3. Lấy danh sách nhân vật
-            try {
-                const charRes = await axios.get(`https://api.baostory.fun/api/characters/${selectedStory}/list`, { headers });
-                const charData = charRes.data?.data || charRes.data || [];
-                setCharactersList(charData);
-            } catch (err) {
-                console.warn("Lỗi tải danh sách nhân vật:", err);
-                setCharactersList([]);
-            }
-
-            // 4. Lấy danh sách chương nguồn
-            try {
+                // Lấy danh sách chương trước
                 const chaptersRes = await axios.get(`https://api.baostory.fun/api/chapters/${selectedStory}/chapters`, { headers });
                 const chList = chaptersRes.data?.data || chaptersRes.data || [];
+
+                // KIỂM TRA: Nếu truyện không có chương, báo lỗi ngay lập tức
+                if (!chList || chList.length === 0) {
+                    toast.error("Truyện này không có chương, không thể tạo phái sinh!");
+                    setSelectedStory("");
+                    setIsFetchingCharacters(false);
+                    setIsFetchingChapters(false);
+                    return;
+                }
+
+                // Nếu hợp lệ mới tiếp tục tải các dữ liệu khác
+                const [detailRes, outlineRes, charRes] = await Promise.all([axios.get(`https://api.baostory.fun/api/stories/${selectedStory}`, { headers }).catch(() => ({})), axios.get(`https://api.baostory.fun/api/storyOutline/${selectedStory}/outline`, { headers }).catch(() => ({})), axios.get(`https://api.baostory.fun/api/characters/${selectedStory}/list`, { headers }).catch(() => ({}))]);
+
+                setActiveStoryDetail(detailRes.data?.data || null);
+                setStoryOutline(outlineRes.data?.data || null);
+                setCharactersList(charRes.data?.data || []);
+
                 chList.sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
                 setSourceChapters(chList);
                 setSelectedChapterNumbers(chList.map((ch) => ch.chapterNumber));
             } catch (err) {
-                console.warn("Lỗi tải danh sách chương:", err);
-                setSourceChapters([]);
-                setSelectedChapterNumbers([]);
+                console.error("Lỗi:", err);
+                toast.error("Đã xảy ra lỗi khi kiểm tra truyện.");
+                setSelectedStory("");
+            } finally {
+                setIsFetchingCharacters(false);
+                setIsFetchingChapters(false);
             }
-
-            setIsFetchingCharacters(false);
-            setIsFetchingChapters(false);
         };
 
         fetchStoryData();
@@ -349,7 +342,7 @@ export default function DerivativeStoryPage() {
             const payload = {
                 title: newStoryTitle.trim(),
                 originalStoryId: Number(selectedStory),
-                sourceChapterNumbers: selectedChapterNumbers, // Truyền danh sách các chương được chọn làm đầu vào
+                sourceChapterNumbers: selectedChapterNumbers,
                 characters: derivativeCharacters,
                 chapterPlans: plans,
             };
@@ -408,7 +401,7 @@ export default function DerivativeStoryPage() {
                                         {isFetchingStories ? (
                                             <div className="text-xs text-slate-500 text-center py-6 italic">Đang tải danh sách truyện...</div>
                                         ) : storiesList.length === 0 ? (
-                                            <div className="text-xs text-slate-500 text-center py-6 italic border border-dashed border-white/5 rounded-xl bg-slate-950/10">Chưa có tác phẩm gốc nào.</div>
+                                            <div className="text-xs text-slate-500 text-center py-6 italic border border-dashed border-white/5 rounded-xl bg-slate-950/10">Chưa có tác phẩm gốc nào có chương.</div>
                                         ) : (
                                             storiesList.map((s) => {
                                                 const isCurrentActive = String(selectedStory) === String(s.id);
@@ -428,7 +421,7 @@ export default function DerivativeStoryPage() {
                                     <div className="space-y-4 overflow-y-auto custom-scroll pr-1">
                                         {activeStoryDetail ? (
                                             <div className="flex flex-col gap-4 relative z-10">
-                                                {/* PHẦN CHỌN CHƯƠNG NGUỒN LINH HOẠT (TÙY CHỌN RIÊNG LẺ HOẶC KHOẢNG LIÊN TIẾP) */}
+                                                {/* PHẦN CHỌN CHƯƠNG NGUỒN LINH HOẠT */}
                                                 <div className="space-y-3">
                                                     <div className="flex items-center justify-between">
                                                         <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">
