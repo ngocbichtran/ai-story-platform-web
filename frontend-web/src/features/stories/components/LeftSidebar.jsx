@@ -20,15 +20,13 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
 
     const navItems = [
         { id: "overview", label: "Tổng quan", path: `/stories/${storyId}/editor/overview`, icon: <Layers size={15} /> },
-        { id: "world", label: "Thế giới", path: `/stories/${storyId}/editor/worlds`, icon: <FolderHeart size={15} /> },
+        { id: "worlds", label: "Thế giới", path: `/stories/${storyId}/editor/worlds`, icon: <FolderHeart size={15} /> },
         { id: "characters", label: "Nhân vật", path: `/stories/${storyId}/editor/characters`, icon: <Users size={15} /> },
         { id: "plot", label: "Cốt truyện", path: `/stories/${storyId}/editor/plot`, icon: <ScrollText size={15} /> },
         { id: "plan", label: "Kế hoạch", path: `/stories/${storyId}/editor/plan`, icon: <Clapperboard size={16} /> },
     ];
 
-    // =========================================================================
     // ĐỒNG BỘ NAVIGATION
-    // =========================================================================
     useEffect(() => {
         const currentPath = location.pathname;
         if (currentPath.includes("/editor/chapter/")) {
@@ -66,9 +64,7 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
         fetchData();
     }, [storyId]);
 
-    // =========================================================================
     // XỬ LÝ TẠO MỚI & XÓA CHƯƠNG
-    // =========================================================================
     const handleCreateChapter = async () => {
         if (!chapterTitle.trim() || !chapterNumberInput) return toast.error("Vui lòng nhập đủ thông tin!");
         try {

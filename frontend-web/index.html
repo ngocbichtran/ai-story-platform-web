@@ -6,6 +6,16 @@
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>BaoStory</title>
+        <script>
+            // The existing interface is the canonical dark design. Apply it before
+            // React mounts so the page never flashes the opposite theme.
+            if (localStorage.getItem("theme") !== "light") {
+                document.documentElement.classList.add("dark");
+                document.documentElement.style.colorScheme = "dark";
+            } else {
+                document.documentElement.style.colorScheme = "light";
+            }
+        </script>
     </head>
 
     <body>

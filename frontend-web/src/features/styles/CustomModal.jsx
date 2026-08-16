@@ -1,21 +1,10 @@
 import React from "react";
 
-export default function CustomModal({
-    isOpen,
-    onClose,
-    onConfirm,
-    title = "Xác nhận",
-    message = "Bạn có chắc chắn muốn thực hiện hành động này?",
-    confirmText = "Xác nhận",
-    cancelText = "Hủy",
-    type = "danger", // 'danger' (màu đỏ) hoặc 'primary' (màu xanh)
-}) {
-    if (!isOpen) return null; // Nếu không mở thì không render gì cả
+export default function CustomModal({ isOpen, onClose, onConfirm, title = "Xác nhận", message = "Bạn có chắc chắn muốn thực hiện hành động này?", confirmText = "Xác nhận", cancelText = "Hủy", type = "danger" }) {
+    if (!isOpen) return null;
 
     return (
-        /* 1. Lớp phủ nền mờ full màn hình (Click ra ngoài gọi onClose) */
         <div onClick={onClose} className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
-            {/* 2. Khung nội dung popup (Thêm e.stopPropagation() để click vào trong không bị đóng modal) */}
             <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-[#0F172A] border border-white/10 rounded-3xl p-6 gap-5 flex flex-col shadow-2xl animate-in fade-in zoom-in duration-200">
                 <h3 className="text-sm font-bold text-white">{title}</h3>
                 <p className="text-xs text-slate-300 leading-relaxed">{message}</p>

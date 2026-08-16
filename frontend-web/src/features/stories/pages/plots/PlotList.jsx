@@ -6,61 +6,48 @@ import axios from "axios";
 
 export default function PlotList() {
     const { storyId } = useParams();
-
     const [isEditing, setIsEditing] = useState(false);
     const [plotType, setPlotType] = useState("5sentence");
-
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-
     const [showAISidebar, setShowAISidebar] = useState(false);
     const [isGenerating5Sentence, setIsGenerating5Sentence] = useState(false);
     const [isGenerating1Page, setIsGenerating1Page] = useState(false);
     const [isGenerating4Page, setIsGenerating4Page] = useState(false);
-
     const [isDerivative, setIsDerivative] = useState(false);
-
     const [form, setForm] = useState({
         fiveSentences: "",
         onePage: "",
         fourPages: "",
     });
-
     const [aiResults, setAiResults] = useState({
         fiveSentences: "",
         onePage: "",
         fourPages: "",
     });
-
     const handleChange = (field, value) => {
         setForm((prev) => ({
             ...prev,
             [field]: value,
         }));
     };
-
     const checkIsDerivative = (storyData) => {
         const rawOriginalStoryId = storyData?.original_story_id ?? storyData?.originalStoryId ?? null;
-
         if (rawOriginalStoryId === null || rawOriginalStoryId === undefined || rawOriginalStoryId === "" || rawOriginalStoryId === "null" || rawOriginalStoryId === "undefined") {
             setIsDerivative(false);
             return false;
         }
-
         const numericOriginalStoryId = Number(rawOriginalStoryId);
-
         if (Number.isNaN(numericOriginalStoryId) || numericOriginalStoryId <= 0) {
             setIsDerivative(false);
             return false;
         }
-
         setIsDerivative(true);
         return true;
     };
 
     const fetchOutlineData = useCallback(async () => {
         if (!storyId) return;
-
         try {
             setIsLoading(true);
             const token = localStorage.getItem("token");
@@ -69,17 +56,12 @@ export default function PlotList() {
                     Authorization: `Bearer ${token}`,
                 },
             };
-
             const storyRes = await axios.get(`https://api.baostory.fun/api/stories/${storyId}`, config);
             const storyData = storyRes.data?.data ?? storyRes.data?.story ?? storyRes.data;
-
             checkIsDerivative(storyData);
-
-            // Sửa lại thành:
             const outlineRes = await axios.get(`https://api.baostory.fun/api/storyOutline/${storyId}/outline`, config);
             if (outlineRes.data?.success && outlineRes.data?.data) {
                 const data = outlineRes.data.data;
-
                 setForm({
                     fiveSentences: data.fiveSentences || "",
                     onePage: data.onePage || "",
@@ -110,7 +92,6 @@ export default function PlotList() {
         try {
             setIsSaving(true);
             const token = localStorage.getItem("token");
-
             const res = await axios.put(`https://api.baostory.fun/api/storyOutline/${storyId}/outline`, form, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -132,11 +113,6 @@ export default function PlotList() {
     };
 
     const parseAIResponse = (responseData, targetPlotType) => {
-        console.log("====================================");
-        console.log("🔍 PARSING AI RESPONSE CHO TAB:", targetPlotType);
-        console.log("====================================");
-        console.log(JSON.stringify(responseData, null, 2));
-
         let field = "";
         if (targetPlotType === "5sentence") {
             field = "fiveSentences";
@@ -145,27 +121,19 @@ export default function PlotList() {
         } else if (targetPlotType === "4pages") {
             field = "fourPages";
         }
-
         let rawData = responseData?.data ?? responseData;
         if (Array.isArray(rawData)) {
             rawData = rawData[0] || {};
         }
-
         let content = "";
-
-        // 1. Lấy trực tiếp từ field chuẩn (fiveSentences, onePage, fourPages, hoặc content)
         if (typeof rawData === "object" && rawData !== null) {
             content = rawData[field] || rawData.fourPages || rawData.fiveSentences || rawData.onePage || rawData.content || rawData.output || rawData.text || "";
-
-            // 2. Nếu không thấy nhưng có mảng outline từ N8N trả về (như mảng 12 câu của bạn)
             if (!content && rawData.outline) {
                 content = rawData.outline;
             }
         } else if (typeof rawData === "string") {
             content = rawData;
         }
-
-        // 3. Nếu content đang là một mảng các đoạn văn (Array)
         if (Array.isArray(content)) {
             content = content
                 .map((item) => {
@@ -178,8 +146,6 @@ export default function PlotList() {
                 .filter(Boolean)
                 .join("\n\n");
         }
-
-        // 4. Nếu content là object lồng nhau
         if (content && typeof content === "object") {
             if (Array.isArray(content.outline)) {
                 content = content.outline.join("\n\n");
@@ -187,12 +153,7 @@ export default function PlotList() {
                 content = content.content || content.output || content.text || "";
             }
         }
-
         content = String(content || "").trim();
-
-        console.log("🎯 FIELD ĐÍCH:", field);
-        console.log("📝 NỘI DUNG SAU KHI PARSE:", content.substring(0, 100) + "...");
-
         return {
             field,
             content,
@@ -207,9 +168,7 @@ export default function PlotList() {
             toast.error("Truyện phái sinh không sử dụng tính năng AI gợi ý.");
             return;
         }
-
         setShowAISidebar(true);
-
         const setLoad = (value) => {
             if (targetPlotType === "5sentence") {
                 setIsGenerating5Sentence(value);
@@ -219,8 +178,6 @@ export default function PlotList() {
                 setIsGenerating4Page(value);
             }
         };
-
-        // Phân rã Endpoint chuẩn xác cho từng nút gọi AI
         let endpointSubPath = "";
         if (targetPlotType === "5sentence") {
             endpointSubPath = "ai-suggest-5sentences";
@@ -233,7 +190,6 @@ export default function PlotList() {
         try {
             setLoad(true);
             const token = localStorage.getItem("token");
-
             const payload = {
                 storyId: Number(storyId),
                 plotType: targetPlotType,
@@ -331,7 +287,6 @@ export default function PlotList() {
     };
 
     const isCurrentGeneratingAI = plotType === "5sentence" ? isGenerating5Sentence : plotType === "1page" ? isGenerating1Page : isGenerating4Page;
-
     const currentText = getCurrentContent();
     const outlineAIResult = getCurrentAIResult();
     const wordCount = currentText.trim().split(/\s+/).filter(Boolean).length;

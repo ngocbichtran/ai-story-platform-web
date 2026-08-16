@@ -7,11 +7,7 @@ import toast from "react-hot-toast";
 export default function RightSidebar({ isOpen, setIsOpen }) {
     const { storyId } = useParams();
     const navigate = useNavigate();
-
-    // Quản lý tab đang mở: "characters" | "worlds" | ""
     const [activeTab, setActiveTab] = useState("");
-
-    // State lưu dữ liệu từ API
     const [characters, setCharacters] = useState([]);
     const [worlds, setWorlds] = useState([]);
     const [loadingChars, setLoadingChars] = useState(false);

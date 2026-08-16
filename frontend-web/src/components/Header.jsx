@@ -2,16 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logoImage from "../assets/images/logo-white.png";
 import { Search, User, LogOut, LockKeyhole, ChevronDown } from "lucide-react";
-
+import ThemeToggle from "./ThemeToggle";
 export default function Header({ currentUser, search, setSearch, handleLogout }) {
     const location = useLocation();
     const navigate = useNavigate();
     const [showDropdown, setShowDropdown] = useState(false);
     const dropdownRef = useRef(null);
 
-    // =========================================================================
-    // LOGIC TỰ ĐỘNG ĐÓNG DROPDOWN KHI CLICK RA NGOÀI
-    // =========================================================================
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -25,17 +22,9 @@ export default function Header({ currentUser, search, setSearch, handleLogout })
         };
     }, []);
 
-    // =========================================================================
-    // LOGIC ĐIỀU HƯỚNG TÌM KIẾM SERVER-SIDE THÔNG MINH
-    // =========================================================================
     const handleSearchChange = (e) => {
         const value = e.target.value;
-
-        // Đẩy giá trị từ khóa lên Context cha để kích hoạt useEffect gọi API ở trang con
         setSearch(value);
-
-        // Nâng cấp trải nghiệm (UX): Nếu tác giả đang đứng ở một phân hệ khác (như /changePassword hoặc /stories/:id/editor)
-        // mà gõ tìm kiếm, hệ thống tự động đưa họ về trang danh sách chính để hiển thị kết quả từ API Server lập tức.
         if (value.trim() !== "" && location.pathname !== "/home" && location.pathname !== "/stories") {
             navigate("/stories");
         }
@@ -47,13 +36,13 @@ export default function Header({ currentUser, search, setSearch, handleLogout })
     ];
 
     return (
-        <header className="fixed top-0 left-0 right-0 z-50 bg-[#0B1120]/80 backdrop-blur-xl border-b border-white/10">
+        <header className="app-header fixed top-0 left-0 right-0 z-50 bg-[#0B1120]/80 backdrop-blur-xl border-b border-white/10">
             <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-6">
                 {/* 1. CỤM TRÁI: LOGO + NAVIGATION */}
                 <div className="flex items-center gap-28 shrink-0">
                     {/* LOGO */}
                     <Link to="/home" className="flex items-center gap-2">
-                        <img src={logoImage} alt="BaoStory" className="w-14 h-14 object-contain mt-2" />
+                        <img src={logoImage} alt="BaoStory" className="app-header__logo w-14 h-14 object-contain mt-2" />
                         <h1 className="font-bold text-xl text-white tracking-wide">BaoStory</h1>
                     </Link>
 
@@ -72,7 +61,11 @@ export default function Header({ currentUser, search, setSearch, handleLogout })
                         })}
                     </nav>
                 </div>
+                <div className="flex items-center gap-3">
+                    <ThemeToggle />
 
+                    {/* avatar / notification / user... */}
+                </div>
                 {/* 2. CỤM PHẢI: THANH TÌM KIẾM ĐỒNG BỘ API + THÔNG TIN USER */}
                 <div className="flex items-center gap-4 flex-1 justify-end">
                     {/* Ô TÌM KIẾM TỰ ĐỘNG TRIGGER EVENT ĐỒNG BỘ */}

@@ -8,31 +8,18 @@ const N8N_BASE_URL = "https://n8n.baostory.fun";
 export default function ChapterPlanEditor() {
     const { storyId } = useParams();
     const navigate = useNavigate();
-
-    // =====================================================
-    // STATES
-    // =====================================================
-
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAILoading, setIsAILoading] = useState(false);
     const [isCurrentAILoading, setIsCurrentAILoading] = useState(false);
     const [selectedPlanId, setSelectedPlanId] = useState(null);
     const [isEditingPlan, setIsEditingPlan] = useState(false);
-
-    // State lưu nội dung do AI trả về để hiển thị ở cột riêng biệt
     const [aiSuggestedSummary, setAiSuggestedSummary] = useState("");
-
     const [planForm, setPlanForm] = useState({
         chapterNumber: 1,
         versionName: "",
         summary: "",
     });
-
-    // =====================================================
-    // AXIOS CONFIG
-    // =====================================================
-
     const getAuthConfig = () => {
         const token = localStorage.getItem("token");
         return {
@@ -42,7 +29,6 @@ export default function ChapterPlanEditor() {
             },
         };
     };
-
     const extractChapterPlan = (rawResponse) => {
         try {
             let data = rawResponse;
@@ -73,7 +59,7 @@ export default function ChapterPlanEditor() {
             if (!data || typeof data !== "object") return null;
             return data;
         } catch (error) {
-            console.error("❌ Lỗi extract chapterPlan:", error);
+            console.error("Lỗi extract chapterPlan:", error);
             return null;
         }
     };
@@ -113,7 +99,6 @@ export default function ChapterPlanEditor() {
     // =====================================================
     // 1. LẤY DANH SÁCH KẾ HOẠCH CHƯƠNG
     // =====================================================
-
     const fetchPlans = useCallback(async () => {
         if (!storyId) return;
         try {
@@ -139,7 +124,7 @@ export default function ChapterPlanEditor() {
                 setPlans([]);
             }
         } catch (err) {
-            console.error("❌ Lỗi tải danh sách kế hoạch chương:", err.response?.data || err);
+            console.error("Lỗi tải danh sách kế hoạch chương:", err.response?.data || err);
             toast.error(err.response?.data?.message || "Không thể tải danh sách kế hoạch.");
         } finally {
             setLoading(false);
@@ -157,28 +142,22 @@ export default function ChapterPlanEditor() {
             setPlanForm({
                 chapterNumber: currentPlan.chapterNumber || 1,
                 versionName: currentPlan.versionName || currentPlan.title || "",
-                summary: buildChapterSummary(currentPlan), // 🟢 Dùng hàm buildChapterSummary để nhận đúng dữ liệu từ các trường purpose, conflict, endingHook hoặc summary
+                summary: buildChapterSummary(currentPlan),
             });
-            setAiSuggestedSummary(""); // Reset AI box khi đổi chương
+            setAiSuggestedSummary("");
         }
     }, [currentPlan]);
 
     // =====================================================
-    // 3. GỌI AI N8N
-    // TẠO MỚI KẾ HOẠCH KẾ TIẾP & TỰ ĐỘNG TẠO CHƯƠNG
+    // N8N TẠO MỚI KẾ HOẠCH KẾ TIẾP & TỰ ĐỘNG TẠO CHƯƠNG
     // =====================================================
-
     const handleAISuggestPlan = async () => {
         if (!storyId) {
             toast.error("Không tìm thấy storyId.");
             return;
         }
-
-        // Kiểm tra các kế hoạch hiện tại
-        // Nếu có kế hoạch chưa hoàn thiện summary thì không cho tạo tiếp
         if (plans.length > 0) {
             const hasEmptySummary = plans.some((p) => !buildChapterSummary(p));
-
             if (hasEmptySummary) {
                 toast.error("Vui lòng hoàn thiện nội dung tóm tắt cho các kế hoạch chương hiện tại trước khi tạo thêm kế hoạch mới!");
                 return;
@@ -187,44 +166,25 @@ export default function ChapterPlanEditor() {
 
         try {
             setIsAILoading(true);
-
             const config = getAuthConfig();
-
-            // Tính chương tiếp theo
             const nextNum = plans.length > 0 ? Math.max(...plans.map((p) => Number(p.chapterNumber) || 0)) + 1 : 1;
-
-            // =====================================================
-            // PAYLOAD GỬI BACKEND
-            // =====================================================
-            // Không cần gửi world.
-            // Backend sẽ tự lấy world từ MongoDB bằng storyId.
             const payload = {
                 storyId: Number(storyId),
                 chapterNumber: Number(nextNum),
             };
-
-            console.log("📤 Payload gửi Backend:", payload);
-
             const res = await axios.post("https://api.baostory.fun/api/chapterPlan/suggest-next", payload, config);
-
             if (!res.data?.success) {
                 toast.error(res.data?.message || "Không thể tạo kế hoạch chương.");
                 return;
             }
-
             toast.success("AI đã tạo kế hoạch và khởi tạo chương mới thành công!");
-
-            // Reload danh sách kế hoạch
             await fetchPlans();
-
-            // Chọn kế hoạch vừa tạo
             const newId = res.data?.data?.planId;
-
             if (newId) {
                 setSelectedPlanId(newId);
             }
         } catch (err) {
-            console.error("❌ LỖI TẠO KẾ HOẠCH:", err.response?.data || err);
+            console.error("LỖI TẠO KẾ HOẠCH:", err.response?.data || err);
 
             toast.error(err.response?.data?.message || "Không thể kết nối tới hệ thống.");
         } finally {
@@ -234,13 +194,11 @@ export default function ChapterPlanEditor() {
     // =====================================================
     // GỢI Ý AI CHO CHƯƠNG HIỆN TẠI (HIỂN THỊ CỘT RIÊNG)
     // =====================================================
-
     const handleAISuggestCurrentPlan = async () => {
         if (!storyId || !currentPlan) {
             toast.error("Vui lòng chọn một kế hoạch chương.");
             return;
         }
-
         try {
             setIsCurrentAILoading(true);
             const config = getAuthConfig();
@@ -255,24 +213,20 @@ export default function ChapterPlanEditor() {
                 toast.error(res.data?.message || "Không thể lấy gợi ý AI.");
                 return;
             }
-
             const data = res.data.data;
             const generatedSummary = buildChapterSummary(data);
-
-            // Lưu vào state riêng của AI để hiển thị cột bên phải
             setAiSuggestedSummary(generatedSummary);
             setIsEditingPlan(true);
 
             toast.success(`AI đã đưa ra gợi ý mới cho Chương ${currentChapterNumber}.`);
         } catch (err) {
-            console.error("❌ LỖI GỢI Ý CHƯƠNG HIỆN TẠI:", err.response?.data || err);
+            console.error("LỖI GỢI Ý CHƯƠNG HIỆN TẠI:", err.response?.data || err);
             toast.error(err.response?.data?.message || "Không thể kết nối hệ thống AI.");
         } finally {
             setIsCurrentAILoading(false);
         }
     };
 
-    // Nút chấp nhận nội dung từ AI đưa sang cột gốc nhưng GIỮ LẠI khung AI
     const handleAcceptAISummary = () => {
         if (!aiSuggestedSummary) return;
         setPlanForm((prev) => ({
@@ -285,7 +239,6 @@ export default function ChapterPlanEditor() {
     // =====================================================
     // 4. LƯU KẾ HOẠCH
     // =====================================================
-
     const handleSavePlan = async () => {
         try {
             const config = getAuthConfig();
@@ -314,7 +267,7 @@ export default function ChapterPlanEditor() {
                 toast.error(res.data?.message || "Lưu kế hoạch thất bại.");
             }
         } catch (err) {
-            console.error("❌ Lỗi lưu kế hoạch:", err.response?.data || err);
+            console.error("Lỗi lưu kế hoạch:", err.response?.data || err);
             toast.error(err.response?.data?.message || "Không thể lưu kế hoạch.");
         }
     };
@@ -322,7 +275,6 @@ export default function ChapterPlanEditor() {
     // =====================================================
     // 5. XÓA KẾ HOẠCH
     // =====================================================
-
     const handleDeletePlan = async (id, e) => {
         e.stopPropagation();
         if (!window.confirm("Bạn có chắc muốn xóa kế hoạch chương này không?")) return;
@@ -338,7 +290,7 @@ export default function ChapterPlanEditor() {
                 toast.error(res.data?.message || "Không thể xóa kế hoạch.");
             }
         } catch (err) {
-            console.error("❌ Lỗi xóa kế hoạch:", err.response?.data || err);
+            console.error("Lỗi xóa kế hoạch:", err.response?.data || err);
             toast.error(err.response?.data?.message || "Không thể xóa kế hoạch.");
         }
     };
@@ -375,8 +327,6 @@ export default function ChapterPlanEditor() {
                             </div>
                             <span>Danh sách kế hoạch</span>
                         </h3>
-
-                        {/* Nút bấm thu nhỏ nằm cùng hàng */}
                         <button onClick={handleAISuggestPlan} disabled={isAILoading} className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-1.5 text-[10px] font-bold text-white shadow-lg shadow-purple-500/10 transition hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50">
                             {isAILoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} className="text-purple-200" />}
                             <span>{isAILoading ? "Đang tạo..." : "Thêm"}</span>
@@ -459,13 +409,12 @@ export default function ChapterPlanEditor() {
                                     </div>
                                 </div>
 
-                                {/* CHIA KẾ HOẠCH THÀNH 2 CỘT: GỐC VÀ AI TRẢ VỀ (LUÔN HIỆN KHI ĐANG SỬA) */}
+                                {/* CHIA KẾ HOẠCH THÀNH 2 CỘT: GỐC VÀ AI TRẢ VỀ */}
                                 <div className="flex flex-col gap-1.5 flex-1">
                                     <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Tóm tắt nội dung kế hoạch</label>
 
                                     {isEditingPlan ? (
                                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1">
-                                            {/* CỘT 2: KẾT QUẢ AI TRẢ VỀ (LUÔN HIỆN KHI ĐANG SỬA) */}
                                             <div className="flex flex-col gap-2 relative">
                                                 <div className="flex items-center justify-between">
                                                     <div className="text-[11px] font-bold text-purple-400 uppercase tracking-wide flex items-center gap-1.5">
@@ -486,10 +435,7 @@ export default function ChapterPlanEditor() {
                                     ) : (
                                         /* HIỂN THỊ THƯỜNG KHI KHÔNG SỬA (CHỈ XEM) */
                                         <div className="flex-1">
-                                            <div className="custom-scroll h-[320px] w-full overflow-y-auto whitespace-pre-wrap rounded-xl border border-white/5 bg-[#0F172A]/60 p-4 leading-7 text-slate-300">
-                                                {/* 🟢 Cập nhật cách lấy nội dung hiển thị để tự động dùng buildChapterSummary */}
-                                                {buildChapterSummary(currentPlan) || <span className="italic text-slate-600">Chưa có tóm tắt kế hoạch.</span>}
-                                            </div>
+                                            <div className="custom-scroll h-[320px] w-full overflow-y-auto whitespace-pre-wrap rounded-xl border border-white/5 bg-[#0F172A]/60 p-4 leading-7 text-slate-300">{buildChapterSummary(currentPlan) || <span className="italic text-slate-600">Chưa có tóm tắt kế hoạch.</span>}</div>
                                         </div>
                                     )}
                                 </div>

@@ -5,50 +5,34 @@ import toast from "react-hot-toast";
 import { PanelRight, CalendarDays, FileText, ChevronLeft, ChevronRight, Wand2, Save, Loader2, Sparkles, BookOpen, History, RotateCcw, X, PenLine, Check, Copy, Trash2 } from "lucide-react";
 import RightSidebar from "../../components/RightSidebar";
 
-// 🟢 Định nghĩa Base URL cho Localhost
 const API_BASE_URL = "https://api.baostory.fun/api";
 
 export default function ChapterEditorPage() {
     const { storyId, chapterNumber } = useParams();
     const navigate = useNavigate();
-
-    // UI State
     const [isRightOpen, setIsRightOpen] = useState(false);
     const [showAISidebar, setShowAISidebar] = useState(true);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-
-    // CHAPTER DATA State
     const [chapter, setChapter] = useState(null);
     const [chapterTitle, setChapterTitle] = useState("Tiêu đề chương");
     const [updatedAt, setUpdatedAt] = useState("Vừa xong");
     const [autoSaveStatus, setAutoSaveStatus] = useState("Đồng bộ thời gian thực");
-
-    // CONTENT State
     const [content, setContent] = useState("");
     const [outlineAIResult, setOutlineAIResult] = useState("");
-
-    // 🌟 State phân biệt chế độ AI: true = Kiểm tra chính tả (có highlight), false = Gợi ý nội dung (văn bản thường)
     const [isSpellCheckMode, setIsSpellCheckMode] = useState(false);
     const [highlightedAIElements, setHighlightedAIElements] = useState([]);
     const [detectedErrorCount, setDetectedErrorCount] = useState(0);
-
     const [versionHistory, setVersionHistory] = useState([]);
     const [previewVersion, setPreviewVersion] = useState(null);
     const [restoredVersionId, setRestoredVersionId] = useState(null);
-
-    // LOADING State
     const [loading, setLoading] = useState(true);
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
     const [isAILoading, setIsAILoading] = useState(false);
     const [isPlotLoading, setIsPlotLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-
-    // REF CHO AUTOSAVE DEBOUNCE
     const autoSaveTimerRef = useRef(null);
-
     const wordCount = content.trim() ? content.trim().split(/\s+/).filter(Boolean).length : 0;
 
-    // 🌟 Thuật toán Diff đếm đúng lỗi thay thế/sai từ (Không đếm nhầm do lệch vị trí)
     const buildHighlightedDiff = (original = "", polished = "") => {
         if (!original || !polished) {
             setHighlightedAIElements([<span key="default">{polished}</span>]);
@@ -58,10 +42,7 @@ export default function ChapterEditorPage() {
 
         const origWords = original.trim().split(/\s+/);
         const newWords = polished.trim().split(/\s+/);
-
-        // Chuyển tập hợp từ mới sang Set để tra cứu nhanh xem từ đó có tồn tại hay không
         const newWordsSet = new Set(newWords);
-
         const spans = [];
         let errorCount = 0;
         const maxLen = Math.max(newWords.length, origWords.length);
@@ -69,12 +50,10 @@ export default function ChapterEditorPage() {
         for (let i = 0; i < maxLen; i++) {
             const origWord = i < origWords.length ? origWords[i] : "";
             const newWord = i < newWords.length ? newWords[i] : "";
-
-            // Kiểm tra xem từ cũ có bị thay thế / viết sai không (nếu từ cũ tồn tại ở mảng mới nhưng khác vị trí hoặc bị đổi)
             const isReplacedOrWrong = origWord && !newWordsSet.has(origWord);
 
             if (isReplacedOrWrong) {
-                errorCount++; // 🟢 Chỉ đếm khi thực sự là từ bị thay thế/sai
+                errorCount++;
                 spans.push(
                     <span
                         key={`del-${i}`}
@@ -93,7 +72,6 @@ export default function ChapterEditorPage() {
             }
 
             if (newWord) {
-                // Nếu là từ mới được thêm/sửa vào
                 const isAddedOrChanged = !origWords.includes(newWord);
 
                 spans.push(
@@ -129,7 +107,6 @@ export default function ChapterEditorPage() {
             setLoading(true);
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
-
             const res = await axios.get(`${API_BASE_URL}/chapters/display-chapter/${storyId}/${chapterNumber}`, config);
             const data = res.data.data || {};
 
@@ -318,7 +295,7 @@ export default function ChapterEditorPage() {
     };
 
     // =========================================================================
-    // AI KIỂM TRA CHÍNH TẢ (Có bật chế độ Highlight Diff)
+    // AI KIỂM TRA CHÍNH TẢ
     // =========================================================================
     const handleAIEnhance = async () => {
         if (!storyId || !chapterNumber) return;
@@ -326,7 +303,7 @@ export default function ChapterEditorPage() {
         try {
             setIsAILoading(true);
             setShowAISidebar(true);
-            setIsSpellCheckMode(true); // 🟢 Bật cờ Highlight cho chính tả
+            setIsSpellCheckMode(true);
 
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -361,10 +338,7 @@ export default function ChapterEditorPage() {
 
                 polishedContent = extractContent(response.data);
                 const finalResultText = polishedContent.trim() !== "" ? polishedContent.trim() : content;
-
                 setOutlineAIResult(finalResultText);
-
-                // Gọi hàm sinh Highlight so sánh
                 buildHighlightedDiff(content, finalResultText);
 
                 toast.success("Sửa chính tả thành công!");
@@ -380,7 +354,7 @@ export default function ChapterEditorPage() {
     };
 
     // =========================================================================
-    // AI GỢI Ý NỘI DUNG CHƯƠNG (KHÔNG DÙNG HIGHLIGHT - HIỂN THỊ VĂN BẢN THƯỜNG)
+    // AI GỢI Ý NỘI DUNG CHƯƠNG
     // =========================================================================
     const handlePlotSuggest = async () => {
         if (!storyId || !chapterNumber) return;
@@ -405,7 +379,7 @@ export default function ChapterEditorPage() {
             }
 
             setShowAISidebar(true);
-            setIsSpellCheckMode(false); // 🟢 Tắt cờ Highlight, hiển thị văn bản bình thường
+            setIsSpellCheckMode(false);
 
             const payload = {
                 storyId: Number(storyId),
@@ -430,7 +404,7 @@ export default function ChapterEditorPage() {
                 toast.error(response.data?.message || "Không thể tạo gợi ý nội dung.");
             }
         } catch (error) {
-            console.error("❌ Lỗi gợi ý nội dung chương:", error);
+            console.error("Lỗi gợi ý nội dung chương:", error);
             toast.error(error.response?.data?.message || "Không thể kết nối với hệ thống AI.");
         } finally {
             setIsPlotLoading(false);
@@ -541,7 +515,6 @@ export default function ChapterEditorPage() {
                             )}
                         </div>
 
-                        {/* 🌟 CHỈ HIỂN THỊ THÔNG BÁO HIGHLIGHT KHI Ở CHẾ ĐỘ KIỂM TRA CHÍNH TẢ */}
                         {isSpellCheckMode && outlineAIResult && (
                             <div className={`mx-6 mt-4 px-3 py-2 rounded-lg border text-xs font-medium flex items-center gap-2 ${detectedErrorCount > 0 ? "bg-purple-500/10 border-purple-500/20 text-purple-300" : "bg-green-500/10 border-green-500/20 text-green-300"}`}>
                                 {detectedErrorCount > 0 ? (
@@ -556,10 +529,7 @@ export default function ChapterEditorPage() {
                             </div>
                         )}
 
-                        <div className="flex-1 px-6 py-4">
-                            {/* 🌟 NẾU LÀ CHÍNH TẢ THÌ DÙNG HIGHLIGHT, NẾU LÀ GỢI Ý NỘI DUNG THÌ HIỆN TEXT THƯỜNG */}
-                            {outlineAIResult ? isSpellCheckMode ? <div className="w-full min-h-full bg-transparent text-slate-200 text-[15px] leading-7 font-normal whitespace-pre-wrap selection:bg-blue-500/20">{highlightedAIElements}</div> : <textarea readOnly value={outlineAIResult} className="w-full min-h-full bg-transparent text-slate-300 text-[15px] leading-7 font-normal resize-none border-none focus:ring-0 p-0 focus:outline-none cursor-default selection:bg-blue-500/20" /> : <p className="text-slate-500 text-sm italic">Nội dung tối ưu từ AI sẽ hiển thị ở đây...</p>}
-                        </div>
+                        <div className="flex-1 px-6 py-4">{outlineAIResult ? isSpellCheckMode ? <div className="w-full min-h-full bg-transparent text-slate-200 text-[15px] leading-7 font-normal whitespace-pre-wrap selection:bg-blue-500/20">{highlightedAIElements}</div> : <textarea readOnly value={outlineAIResult} className="w-full min-h-full bg-transparent text-slate-300 text-[15px] leading-7 font-normal resize-none border-none focus:ring-0 p-0 focus:outline-none cursor-default selection:bg-blue-500/20" /> : <p className="text-slate-500 text-sm italic">Nội dung tối ưu từ AI sẽ hiển thị ở đây...</p>}</div>
                     </div>
                 </div>
 

@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, ArrowRight, RotateCcw, ChevronLeft, Check, BookOpen, User } from "lucide-react";
 import toast from "react-hot-toast";
 import axios from "axios";
 import CustomModal from "../../../styles/CustomModal";
+
 export default function DerivativeStoryPage() {
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
@@ -12,20 +13,21 @@ export default function DerivativeStoryPage() {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [newStoryTitle, setNewStoryTitle] = useState("");
     const [showAcceptModal, setShowAcceptModal] = useState(false);
-
     const [selectedStory, setSelectedStory] = useState("");
-    const [selectedCharacter, setSelectedCharacter] = useState("");
 
+    // Thêm state quản lý danh sách chương nguồn của truyện gốc được chọn
+    const [sourceChapters, setSourceChapters] = useState([]);
+    const [selectedChapterNumbers, setSelectedChapterNumbers] = useState([]);
+    const [isFetchingChapters, setIsFetchingChapters] = useState(false);
+
+    const [selectedCharacter, setSelectedCharacter] = useState("");
     const [storiesList, setStoriesList] = useState([]);
     const [isFetchingStories, setIsFetchingStories] = useState(false);
-
     const [charactersList, setCharactersList] = useState([]);
     const [isFetchingCharacters, setIsFetchingCharacters] = useState(false);
-
     const [derivativeCharacters, setDerivativeCharacters] = useState([]);
     const [aiResult, setAiResult] = useState(null);
     const [aiPlansResult, setAiPlansResult] = useState(null);
-
     const [plans, setPlans] = useState([
         { chapterNumber: 1, title: "Chương 1", summary: "Chưa có nội dung..." },
         { chapterNumber: 2, title: "Chương 2", summary: "Chưa có nội dung..." },
@@ -33,7 +35,6 @@ export default function DerivativeStoryPage() {
         { chapterNumber: 4, title: "Chương 4", summary: "Chưa có nội dung..." },
         { chapterNumber: 5, title: "Chương 5", summary: "Chưa có nội dung..." },
     ]);
-
     const [fullCharacterData, setFullCharacterData] = useState({});
     const [charEditForm, setCharEditForm] = useState({
         name: "",
@@ -45,7 +46,6 @@ export default function DerivativeStoryPage() {
         development: "",
         background: "",
     });
-
     const [activeStoryDetail, setActiveStoryDetail] = useState(null);
     const [storyOutline, setStoryOutline] = useState(null);
 
@@ -66,7 +66,6 @@ export default function DerivativeStoryPage() {
                 setIsFetchingStories(false);
             }
         };
-
         fetchStories();
     }, []);
 
@@ -76,45 +75,59 @@ export default function DerivativeStoryPage() {
             setStoryOutline(null);
             setCharactersList([]);
             setSelectedCharacter("");
+            setSourceChapters([]);
+            setSelectedChapterNumbers([]);
             return;
         }
 
         const fetchStoryData = async () => {
             setIsFetchingCharacters(true);
+            setIsFetchingChapters(true);
+            const token = localStorage.getItem("accessToken") || localStorage.getItem("token") || "";
+            const headers = { Authorization: `Bearer ${token}` };
+
+            // 1. Lấy thông tin chi tiết truyện
             try {
-                const token = localStorage.getItem("accessToken") || localStorage.getItem("token") || "";
-
-                const [detailRes, outlineRes, charRes] = await Promise.all([
-                    axios
-                        .get(`https://api.baostory.fun/api/stories/${selectedStory}`, {
-                            headers: { Authorization: `Bearer ${token}` },
-                        })
-                        .catch((err) => ({ error: true, err })),
-
-                    axios
-                        .get(`https://api.baostory.fun/api/storyOutline/${selectedStory}/outline`, {
-                            headers: { Authorization: `Bearer ${token}` },
-                        })
-                        .catch((err) => ({ error: true, err })),
-
-                    axios
-                        .get(`https://api.baostory.fun/api/characters/${selectedStory}/list`, {
-                            headers: { Authorization: `Bearer ${token}` },
-                        })
-                        .catch((err) => ({ error: true, err })),
-                ]);
-
-                if (!detailRes.error) setActiveStoryDetail(detailRes.data?.data || detailRes.data);
-                if (!outlineRes.error) setStoryOutline(outlineRes.data?.data || outlineRes.data);
-                if (!charRes.error) {
-                    const charData = charRes.data?.data || charRes.data || [];
-                    setCharactersList(charData);
-                }
+                const detailRes = await axios.get(`https://api.baostory.fun/api/stories/${selectedStory}`, { headers });
+                setActiveStoryDetail(detailRes.data?.data || detailRes.data);
             } catch (err) {
-                console.error("Lỗi hệ thống khi tải dữ liệu:", err);
-            } finally {
-                setIsFetchingCharacters(false);
+                console.error("Lỗi tải thông tin truyện:", err);
             }
+
+            // 2. Lấy Outline (Bọc try-catch riêng để không chặn các phần khác nếu lỗi 403)
+            try {
+                const outlineRes = await axios.get(`https://api.baostory.fun/api/storyOutline/${selectedStory}/outline`, { headers });
+                setStoryOutline(outlineRes.data?.data || outlineRes.data);
+            } catch (err) {
+                console.warn("Chưa có outline hoặc lỗi quyền:", err);
+                setStoryOutline(null);
+            }
+
+            // 3. Lấy danh sách nhân vật
+            try {
+                const charRes = await axios.get(`https://api.baostory.fun/api/characters/${selectedStory}/list`, { headers });
+                const charData = charRes.data?.data || charRes.data || [];
+                setCharactersList(charData);
+            } catch (err) {
+                console.warn("Lỗi tải danh sách nhân vật:", err);
+                setCharactersList([]);
+            }
+
+            // 4. Lấy danh sách chương nguồn
+            try {
+                const chaptersRes = await axios.get(`https://api.baostory.fun/api/chapters/${selectedStory}/chapters`, { headers });
+                const chList = chaptersRes.data?.data || chaptersRes.data || [];
+                chList.sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
+                setSourceChapters(chList);
+                setSelectedChapterNumbers(chList.map((ch) => ch.chapterNumber));
+            } catch (err) {
+                console.warn("Lỗi tải danh sách chương:", err);
+                setSourceChapters([]);
+                setSelectedChapterNumbers([]);
+            }
+
+            setIsFetchingCharacters(false);
+            setIsFetchingChapters(false);
         };
 
         fetchStoryData();
@@ -165,6 +178,7 @@ export default function DerivativeStoryPage() {
 
     const handleNextStep = () => {
         if (step === 1 && !selectedStory) return toast.error("Vui lòng chọn truyện gốc!");
+        if (step === 1 && selectedChapterNumbers.length === 0) return toast.error("Vui lòng chọn ít nhất một chương nguồn làm đầu vào!");
         if (step === 1 && !newStoryTitle.trim()) return toast.error("Vui lòng nhập tên truyện phái sinh!");
         if (step === 2 && derivativeCharacters.length === 0) return toast.error("Vui lòng thêm ít nhất 1 nhân vật vào danh sách tạm!");
 
@@ -176,7 +190,6 @@ export default function DerivativeStoryPage() {
         }
     };
 
-    // Hàm phụ trợ chuyển đổi object con từ n8n thành chuỗi văn bản sạch sẽ
     const formatObjToString = (obj) => {
         if (!obj) return "";
         if (typeof obj === "string") return obj;
@@ -188,25 +201,19 @@ export default function DerivativeStoryPage() {
         return String(obj);
     };
 
-    // Gọi AI n8n cho nhân vật
     const handleRetryStep = async () => {
         if (step === 2) {
             if (!selectedCharacter) return toast.error("Vui lòng chọn nhân vật gốc trước khi chạy AI!");
-
             setIsLoading(true);
             setCountdown(20);
-
             try {
                 const token = localStorage.getItem("accessToken") || localStorage.getItem("token") || "";
                 const res = await axios.post(`https://api.baostory.fun/api/characters/${selectedCharacter}/transform`, { storyId: selectedStory }, { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } });
-
                 let rawData = res.data?.data?.data || res.data?.data || res.data;
                 if (Array.isArray(rawData)) {
                     rawData = rawData[0] || {};
                 }
-
                 if (rawData && Object.keys(rawData).length > 0) {
-                    // Chuẩn hóa cấu trúc để hiển thị ở cột trái đúng chuẩn các trường yêu cầu
                     const normalizedAiData = {
                         name: rawData.name || "",
                         role: rawData.role || "",
@@ -217,7 +224,6 @@ export default function DerivativeStoryPage() {
                         ability: formatObjToString(rawData.ability),
                         development: formatObjToString(rawData.development),
                     };
-
                     setAiResult(normalizedAiData);
                     toast.success("Hệ thống n8n đã tạo gợi ý nhân vật thành công! Bấm 'Chấp nhận' để đưa sang khung bên phải.");
                 } else {
@@ -234,22 +240,19 @@ export default function DerivativeStoryPage() {
             handleSuggestChapterPlans();
         }
     };
+
     const handleSuggestChapterPlans = async () => {
         if (!selectedStory) return toast.error("Thiếu thông tin bộ truyện!");
-
         setIsLoading(true);
         setCountdown(20);
-
         try {
             const token = localStorage.getItem("accessToken") || localStorage.getItem("token") || "";
             const res = await axios.post(`https://api.baostory.fun/api/chapterPlan/suggest`, { storyId: selectedStory, chapterNumber: 1 }, { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } });
-
             let rawData = res.data?.data?.data || res.data?.data || res.data;
             if (Array.isArray(rawData) && rawData.length > 0 && Array.isArray(rawData[0])) {
                 rawData = rawData[0];
             }
             const chaptersArray = rawData?.chapterPlans || (Array.isArray(rawData) ? rawData : null);
-
             if (chaptersArray && chaptersArray.length > 0) {
                 setAiPlansResult(chaptersArray);
                 toast.success("Hệ thống n8n đã gợi ý kế hoạch chương thành công!");
@@ -264,14 +267,13 @@ export default function DerivativeStoryPage() {
             setCountdown(20);
         }
     };
-    // Khi ấn chấp nhận mới truyền dữ liệu AI sang tab/cột bên phải (charEditForm)
+
     const handleAcceptAiResult = async () => {
         if (step === 2) {
             if (!aiResult) {
                 toast.error("Chưa có dữ liệu gợi ý từ AI để chấp nhận!");
                 return;
             }
-
             setCharEditForm({
                 name: aiResult.name || charEditForm.name,
                 role: aiResult.role || charEditForm.role,
@@ -282,14 +284,12 @@ export default function DerivativeStoryPage() {
                 ability: aiResult.ability || "",
                 development: aiResult.development || "",
             });
-
             toast.success("Đã áp dụng kết quả AI sang cột chỉnh sửa bên phải!");
         } else if (step === 3) {
             if (!aiPlansResult || aiPlansResult.length === 0) {
                 toast.error("Chưa có dữ liệu kế hoạch gợi ý từ AI!");
                 return;
             }
-
             const newPlans = aiPlansResult.map((item, idx) => {
                 const combinedDetails = `Tóm tắt: ${item.summary || item.background || ""}\nMục đích: ${item.purpose || ""}\nXung đột: ${item.conflict || ""}\nHook: ${item.endingHook || ""}`;
                 return {
@@ -298,34 +298,22 @@ export default function DerivativeStoryPage() {
                     summary: combinedDetails.trim(),
                 };
             });
-
             setPlans(newPlans);
             toast.success("Đã đồng bộ kết quả AI vào cột chỉnh sửa kế hoạch bên phải!");
         }
 
         setShowAcceptModal(false);
     };
-    const handleCancelDerivative = () => {
-        setShowCancelModal(true); // Bật popup cảnh báo tùy chỉnh
-    };
-
-    const handleConfirmCancel = () => {
-        setShowCancelModal(false);
-        toast.error("Đã hủy quá trình tạo truyện phái sinh.");
-        navigate("/stories"); // Điều hướng về danh sách truyện
-    };
 
     const handleSaveCharacterProfile = () => {
         if (!charEditForm.name.trim()) {
             return toast.error("Vui lòng nhập tên nhân vật!");
         }
-
         const characterPayload = {
             ...fullCharacterData,
             ...charEditForm,
             tempId: selectedCharacter || Date.now(),
         };
-
         setDerivativeCharacters((prev) => {
             const index = prev.findIndex((c) => c.tempId === characterPayload.tempId);
             if (index >= 0) {
@@ -335,7 +323,6 @@ export default function DerivativeStoryPage() {
             }
             return [...prev, characterPayload];
         });
-
         toast.success(`Đã thêm nhân vật "${charEditForm.name}" vào danh sách tạm!`);
     };
 
@@ -343,37 +330,35 @@ export default function DerivativeStoryPage() {
         if (!newStoryTitle.trim()) {
             return toast.error("Vui lòng nhập tên truyện phái sinh ở Bước 1!");
         }
+        if (selectedChapterNumbers.length === 0) {
+            return toast.error("Vui lòng chọn ít nhất một chương nguồn ở Bước 1!");
+        }
         if (derivativeCharacters.length === 0) {
             return toast.error("Bạn chưa lưu nhân vật nào vào danh sách tạm ở Bước 2!");
         }
-
         setIsLoading(true);
         toast.loading("Đang khởi tạo truyện phái sinh, nhân vật và kế hoạch chương...");
-
         try {
             const token = localStorage.getItem("accessToken") || localStorage.getItem("token") || localStorage.getItem("user_token") || "";
-
             if (!token) {
                 toast.dismiss();
                 toast.error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại!");
                 setIsLoading(false);
                 return;
             }
-
             const payload = {
                 title: newStoryTitle.trim(),
                 originalStoryId: Number(selectedStory),
+                sourceChapterNumbers: selectedChapterNumbers, // Truyền danh sách các chương được chọn làm đầu vào
                 characters: derivativeCharacters,
                 chapterPlans: plans,
             };
-
             await axios.post("https://api.baostory.fun/api/derivativeStory/derivative", payload, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
                 },
             });
-
             toast.dismiss();
             toast.success("Tạo truyện phái sinh và lưu toàn bộ dữ liệu thành công!");
             navigate("/stories");
@@ -391,28 +376,26 @@ export default function DerivativeStoryPage() {
     return (
         <div className="h-screen w-screen bg-[#0A0F18] text-slate-100 flex flex-col overflow-hidden antialiased relative">
             <header className="flex-none w-full border-b border-white/5 bg-[#10151E]/60 backdrop-blur-md px-8 py-3.5 flex items-center justify-between select-none z-20">
+                <button onClick={() => setShowCancelModal(true)} className="text-xs text-red-400 hover:text-red-300 underline transition font-medium">
+                    Hủy quá trình
+                </button>
                 <div className="flex-none px-8 py-3 border-b border-white/5 bg-black/20 flex items-center justify-between select-none">
                     <h2 className="text-base font-bold text-white flex items-center gap-2">
-                        {step === 1 && "Bước 1: Chọn truyện gốc & Đặt tên"}
+                        {step === 1 && "Bước 1: Chọn truyện gốc, chương nguồn & Đặt tên"}
                         {step === 2 && "Bước 2: Chọn nhân vật & Biến đổi"}
                         {step === 3 && "Bước 3: Kế hoạch chương (5 kế hoạch)"}
                     </h2>
                 </div>
-
-                <button onClick={() => setShowCancelModal(true)} className="text-xs text-red-400 hover:text-red-300 underline transition font-medium">
-                    Hủy quá trình
-                </button>
             </header>
-
             <div className="flex-none w-full bg-white/5 h-1.5 flex z-20">
                 <div className="bg-gradient-to-r from-blue-600 to-violet-600 transition-all duration-500" style={{ width: `${(step / 3) * 100}%` }} />
             </div>
-
             <main className="flex-1 min-h-0 w-full flex bg-[#0D121F]/30 p-6 items-center justify-center relative overflow-hidden">
                 <div className="w-full max-w-[1300px] h-full max-h-[950px] bg-[#10151E] border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden">
                     <div className="flex-1 min-h-0 flex flex-col justify-center p-6">
                         {step === 1 && (
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch h-full max-w-7xl mx-auto w-full">
+                                {/* Cột chọn tác phẩm gốc */}
                                 <div className="md:col-span-4 rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-4 flex flex-col min-h-[350px]">
                                     <div className="text-[10px] uppercase font-black tracking-widest text-[#8b919e] mb-2.5 flex-none flex justify-between items-center">
                                         <span className="flex items-center gap-2">
@@ -440,42 +423,75 @@ export default function DerivativeStoryPage() {
                                     </div>
                                 </div>
 
+                                {/* Cột hiển thị thông tin & chọn chương nguồn đầu vào */}
                                 <div className="md:col-span-8 rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-6 flex flex-col justify-between relative overflow-hidden min-h-[350px]">
-                                    <div>
-                                        <div className="text-[10px] uppercase font-black tracking-widest text-[#8b919e] mb-4 flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                                            <span>Thông tin tác phẩm gốc</span>
-                                        </div>
+                                    <div className="space-y-4 overflow-y-auto custom-scroll pr-1">
                                         {activeStoryDetail ? (
                                             <div className="flex flex-col gap-4 relative z-10">
-                                                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                                                    <div className="md:col-span-7">
-                                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tác phẩm gốc</span>
-                                                        <h4 className="text-xs md:text-sm font-bold text-white mt-0.5">{activeStoryDetail.title || activeStoryDetail.name}</h4>
-                                                    </div>
-                                                    <div className="md:col-span-5">
-                                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Thể loại</span>
-                                                        <div className="flex flex-wrap gap-2 mt-1">{renderGenres()}</div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-col gap-2">
-                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Ý tưởng/Mô tả & Cốt truyện</span>
-                                                    <div className="w-full min-h-[140px] max-h-[180px] overflow-y-auto custom-scroll rounded-2xl border border-white/5 bg-black/20 p-4 text-slate-300 text-xs md:text-sm leading-relaxed border-dashed space-y-2">
-                                                        <div>
-                                                            <strong className="text-blue-400">Mô tả:</strong>
-                                                            <p>{activeStoryDetail.description || "Chưa có mô tả."}</p>
+                                                {/* PHẦN CHỌN CHƯƠNG NGUỒN LINH HOẠT (TÙY CHỌN RIÊNG LẺ HOẶC KHOẢNG LIÊN TIẾP) */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">
+                                                            Chọn chương nguồn đầu vào ({selectedChapterNumbers.length}/{sourceChapters.length} đã chọn)
+                                                        </span>
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    if (selectedChapterNumbers.length === sourceChapters.length) {
+                                                                        setSelectedChapterNumbers([]);
+                                                                    } else {
+                                                                        setSelectedChapterNumbers(sourceChapters.map((ch) => ch.chapterNumber));
+                                                                    }
+                                                                }}
+                                                                className="text-[11px] text-blue-400 hover:underline font-semibold"
+                                                            >
+                                                                {selectedChapterNumbers.length === sourceChapters.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                                                            </button>
                                                         </div>
+                                                    </div>
+
+                                                    {/* Danh sách danh mục chương dạng checkbox */}
+                                                    <div className="max-h-70 overflow-y-auto custom-scroll space-y-1.5 p-2.5 rounded-xl border border-white/5 bg-black/30">
+                                                        {isFetchingChapters ? (
+                                                            <div className="text-xs text-slate-500 text-center py-4 italic">Đang tải danh sách chương...</div>
+                                                        ) : sourceChapters.length > 0 ? (
+                                                            sourceChapters.map((ch) => {
+                                                                const isChecked = selectedChapterNumbers.includes(ch.chapterNumber);
+                                                                return (
+                                                                    <div
+                                                                        key={ch.chapterNumber}
+                                                                        onClick={() => {
+                                                                            if (isChecked) {
+                                                                                setSelectedChapterNumbers(selectedChapterNumbers.filter((n) => n !== ch.chapterNumber));
+                                                                            } else {
+                                                                                setSelectedChapterNumbers([...selectedChapterNumbers, ch.chapterNumber]);
+                                                                            }
+                                                                        }}
+                                                                        className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition border ${isChecked ? "bg-blue-600/20 border-blue-500/40 text-white font-medium" : "bg-transparent border-transparent text-slate-400 hover:bg-white/5"}`}
+                                                                    >
+                                                                        <span className="text-xs truncate">
+                                                                            Chương {ch.chapterNumber}: {ch.title || "Không có tiêu đề"}
+                                                                        </span>
+                                                                        <input type="checkbox" checked={isChecked} onChange={() => {}} className="w-3.5 h-3.5 rounded text-blue-600 cursor-pointer" />
+                                                                    </div>
+                                                                );
+                                                            })
+                                                        ) : (
+                                                            <p className="text-xs text-center py-4 text-slate-500 italic">Truyện gốc này chưa có chương nào.</p>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="flex flex-col items-center justify-center py-16 text-center text-slate-500 gap-2">
+                                            <div className="flex flex-col items-center justify-center py-12 text-center text-slate-500 gap-2">
                                                 <BookOpen size={28} className="text-slate-600 animate-pulse" />
                                                 <span className="text-xs italic">Vui lòng chọn một tác phẩm ở danh sách bên trái.</span>
                                             </div>
                                         )}
                                     </div>
-                                    <div className="pt-4 border-t border-[#1e2633] flex flex-col gap-1.5">
+
+                                    <div className="pt-4 border-t border-[#1e2633] flex flex-col gap-1.5 flex-none mt-4">
                                         <label className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Tên truyện phái sinh của bạn</label>
                                         <input type="text" value={newStoryTitle || ""} onChange={(e) => setNewStoryTitle(e.target.value)} placeholder="Nhập tên mới cho tác phẩm phái sinh..." className="w-full bg-[#181d29] border border-blue-500/30 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-xs md:text-sm text-white outline-none transition" />
                                     </div>
@@ -506,7 +522,7 @@ export default function DerivativeStoryPage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch flex-1 min-h-0">
-                                    {/* CỘT TRÁI: HIỂN THỊ KẾT QUẢ AI RÕ RÀNG THEO CÁC TRƯỜNG YÊU CẦU */}
+                                    {/* CỘT TRÁI: KẾT QUẢ AI */}
                                     <div className="md:col-span-6 rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-4 flex flex-col justify-between relative overflow-hidden min-h-0">
                                         <div className="flex-1 flex flex-col min-h-0">
                                             <div className="text-[10px] uppercase font-black tracking-widest text-[#8b919e] mb-2.5 flex items-center justify-between flex-none">
@@ -561,7 +577,7 @@ export default function DerivativeStoryPage() {
                                         </div>
                                     </div>
 
-                                    {/* CỘT PHẢI: CHỈNH SỬA / NHẬN DỮ LIỆU KHI ẤN CHẤP NHẬN */}
+                                    {/* CỘT PHẢI: CHỈNH SỬA / LƯU */}
                                     <div className="md:col-span-6 rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-4 flex flex-col justify-between relative overflow-hidden min-h-0">
                                         <div className="flex-1 flex flex-col min-h-0">
                                             <div className="text-[10px] uppercase font-black tracking-widest text-[#8b919e] mb-2.5 flex items-center justify-between flex-none">
@@ -768,7 +784,7 @@ export default function DerivativeStoryPage() {
                 onClose={() => setShowCancelModal(false)}
                 onConfirm={() => {
                     toast.error("Đã hủy quá trình tạo truyện phái sinh.");
-                    navigate("/stories"); // Hoặc trang bạn muốn chuyển hướng khi hủy
+                    navigate("/stories");
                 }}
                 title="Xác nhận hủy quá trình"
                 message="Nếu hủy, toàn bộ công sức nãy giờ sẽ mất và không được lưu lại. Bạn có chắc chắn muốn thoát không?"

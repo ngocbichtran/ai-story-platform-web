@@ -13,10 +13,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Toaster
             position="top-right"
             toastOptions={{
+                duration: 2000, // Thời gian hiện
                 style: {
-                    background: "#1e1e2f",
-                    color: "#fff",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    background: "var(--bg-card)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--border-color)",
+                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
                 },
             }}
         />

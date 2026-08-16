@@ -7,16 +7,8 @@ import { Plus, Globe2, Trash2, Loader2 } from "lucide-react";
 export default function WorldListPage() {
     const navigate = useNavigate();
     const { storyId } = useParams();
-
-    // =========================
-    // STATES
-    // =========================
     const [loading, setLoading] = useState(true);
     const [worlds, setWorlds] = useState([]);
-
-    // =========================
-    // FETCH WORLDS API
-    // =========================
     const fetchWorlds = async () => {
         try {
             setLoading(true);
@@ -41,21 +33,15 @@ export default function WorldListPage() {
         }
     }, [storyId]);
 
-    // =========================
-    // HANDLE DELETE (Tùy chọn mở rộng)
-    // =========================
     const handleDeleteWorld = async (worldId) => {
         if (!window.confirm("Bạn có chắc muốn xóa vĩnh viễn thế giới này?")) return;
 
         try {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
-
-            // Kích hoạt HTTP DELETE Request lên Server theo đúng endpoint /api/world/:worldId
             const res = await axios.delete(`https://api.baostory.fun/api/world/${worldId}`, config);
 
             if (res.data.success) {
-                // Lọc bỏ thế giới vừa xóa khỏi danh sách trên state giao diện
                 setWorlds((prev) => prev.filter((w) => w.id !== worldId));
                 toast.success("Xóa bối cảnh thế giới thành công.");
             }

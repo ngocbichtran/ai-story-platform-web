@@ -11,31 +11,20 @@ export default function EditStory() {
     const DEFAULT_COVERS = ["https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=500&auto=format&fit=crop&q=60", "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&auto=format&fit=crop&q=60", "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=500&auto=format&fit=crop&q=60", "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=500&auto=format&fit=crop&q=60"];
     const handleSelectDefaultCover = (url) => {
         setCoverPreview(url);
-        setCoverFile(null); // Reset file upload nếu chọn mẫu có sẵn
+        setCoverFile(null);
     };
-    // =========================
-    // STATE DỮ LIỆU THỰC TẾ
-    // =========================
     const [title, setTitle] = useState("");
     const [summary, setSummary] = useState("");
     const [copied, setCopied] = useState("");
     const [storyPlanning, setStoryPlanning] = useState("");
-
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-
     const [showGenreModal, setShowGenreModal] = useState(false);
     const [genres, setGenres] = useState([]);
     const [selectedGenres, setSelectedGenres] = useState([]);
-
     const [newGenre, setNewGenre] = useState("");
-
     const [coverPreview, setCoverPreview] = useState(null);
     const [coverFile, setCoverFile] = useState(null);
-
-    // =========================
-    // STATE CHO TÍNH NĂNG AI REVERSE
-    // =========================
     const [selectedStory, setSelectedStory] = useState("");
     const [reverseIdea, setReverseIdea] = useState("");
     const [userStories, setUserStories] = useState([]);
@@ -261,7 +250,7 @@ export default function EditStory() {
                 title: title.trim(),
                 description: summary.trim(),
                 genreIds: formatGenreIds,
-                coverImage: coverPreview, // Gửi URL ảnh (bao gồm cả ảnh mẫu hoặc ảnh preview)
+                coverImage: coverPreview,
             };
 
             const res = await axios.put(`https://api.baostory.fun/api/stories/${storyId}`, payload, config);
@@ -396,7 +385,6 @@ export default function EditStory() {
                                     {/* Khung 2: Ý tưởng đảo ngược (AI) */}
                                     <div className="flex flex-col gap-2">
                                         <div className="flex items-center justify-between px-1">
-                                            {/* Cụm nút hành động nằm GỌN GÀNG ở phía trên, không bao giờ che chữ */}
                                             <div className="flex items-center gap-1.5">
                                                 {storyPlanning && (
                                                     <button

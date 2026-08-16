@@ -1,7 +1,268 @@
 @import "tailwindcss";
 @import "bootstrap-icons/font/bootstrap-icons.css";
 
-/* Ẩn icon con mắt do Google thêm khi nhập mật khẩu*/
+/* =========================
+   DARK MODE - GIAO DIỆN GỐC
+========================= */
+
+:root {
+    --bg-primary: #0f1115;
+    --bg-secondary: #171a21;
+    --bg-card: #1c2028;
+    --bg-input: #222731;
+
+    --text-primary: #ffffff;
+    --text-secondary: #c7cbd4;
+    --text-muted: #8b919d;
+
+    --border-color: #2d333d;
+
+    --primary-color: #4d8eea;
+}
+
+/* =========================
+   LIGHT MODE
+========================= */
+
+html:not(.dark) {
+    --bg-primary: #f5f3ff;
+    --bg-secondary: #ede9fe;
+    --bg-card: #ffffff;
+    --bg-input: #ffffff;
+
+    --text-primary: #2e1065;
+    --text-secondary: #6d28d9;
+    --text-muted: #a78bfa;
+
+    --border-color: #ddd6fe;
+
+    --primary-color: #7c3aed;
+}
+
+/* Light dashboard: cool-neutral surfaces with indigo as the accent. */
+html:not(.dark) body {
+    background: radial-gradient(circle at 8% 5%, rgb(129 140 248 / 0.22), transparent 30rem), radial-gradient(circle at 90% 14%, rgb(56 189 248 / 0.16), transparent 28rem), linear-gradient(135deg, #f8faff 0%, #eef2ff 52%, #e8edff 100%);
+}
+
+html:not(.dark) .app-shell__background {
+    opacity: 0.055;
+    mix-blend-mode: multiply;
+}
+
+html:not(.dark) .app-header {
+    background: rgb(255 255 255 / 0.78);
+    border-color: rgb(199 210 254 / 0.9);
+    box-shadow:
+        0 1px 0 rgb(99 102 241 / 0.08),
+        0 12px 32px rgb(79 70 229 / 0.1);
+}
+
+html:not(.dark) .app-header__logo {
+    filter: invert(1);
+}
+
+html:not(.dark) .app-header h1,
+html:not(.dark) .app-header nav .text-white,
+html:not(.dark) .app-header .text-slate-200 {
+    color: var(--text-primary);
+}
+
+html:not(.dark) .app-header nav .text-slate-400,
+html:not(.dark) .app-header .text-slate-400,
+html:not(.dark) .app-header .text-slate-500 {
+    color: var(--text-secondary);
+}
+
+html:not(.dark) .app-header input {
+    background-color: #f8faff;
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+html:not(.dark) .app-header input:focus {
+    background-color: #ffffff;
+    border-color: #818cf8;
+    box-shadow: 0 0 0 3px rgb(99 102 241 / 0.12);
+}
+
+html:not(.dark) .app-header button:not(.theme-toggle),
+html:not(.dark) .app-header [class*="bg-white/5"] {
+    background-color: #f8faff;
+    border-color: var(--border-color);
+}
+
+html:not(.dark) .theme-toggle {
+    background: linear-gradient(135deg, #e0e7ff, #dbeafe);
+    color: #4338ca;
+    box-shadow:
+        inset 0 0 0 1px #c7d2fe,
+        0 6px 18px rgb(79 70 229 / 0.15);
+}
+
+html:not(.dark) .theme-toggle:hover {
+    background: linear-gradient(135deg, #c7d2fe, #bfdbfe);
+}
+
+html:not(.dark) .dashboard-section-heading {
+    border-color: var(--border-color);
+}
+
+html:not(.dark) .dashboard-section-heading h2,
+html:not(.dark) .story-card h3,
+html:not(.dark) .story-library__panel h1,
+html:not(.dark) .library-story-card h3 {
+    color: var(--text-primary);
+}
+
+html:not(.dark) .dashboard-section-heading p,
+html:not(.dark) .story-card p,
+html:not(.dark) .story-library__panel .text-slate-400,
+html:not(.dark) .library-story-card p {
+    color: var(--text-secondary);
+}
+
+html:not(.dark) .story-card,
+html:not(.dark) .library-story-card {
+    background: linear-gradient(135deg, rgb(255 255 255 / 0.96), rgb(248 250 255 / 0.9));
+    border-color: #d6ddff;
+    box-shadow: 0 10px 28px rgb(79 70 229 / 0.09);
+}
+
+html:not(.dark) .story-card:hover {
+    background: #ffffff;
+    border-color: #818cf8;
+    box-shadow: 0 16px 36px rgb(79 70 229 / 0.18);
+}
+
+html:not(.dark) .story-card .bg-slate-900,
+html:not(.dark) .library-story-card .bg-slate-900 {
+    background-color: #eef1f7;
+    border-color: var(--border-color);
+}
+
+html:not(.dark) .story-library__panel {
+    background: linear-gradient(135deg, rgb(255 255 255 / 0.9), rgb(244 247 255 / 0.82));
+    border-color: #cfd8ff;
+    box-shadow: 0 20px 50px rgb(79 70 229 / 0.14);
+}
+
+html:not(.dark) .story-library__panel > div:first-child {
+    border-color: var(--border-color);
+}
+
+html:not(.dark) .story-library__panel :is(a, button).text-white {
+    color: #ffffff;
+}
+
+html:not(.dark) .story-card .border-white\/5,
+html:not(.dark) .story-card .border-white\/10,
+html:not(.dark) .library-story-card .border-white\/5,
+html:not(.dark) .library-story-card .border-white\/10 {
+    border-color: var(--border-color);
+}
+
+html:not(.dark) :is([class*="bg-[#070b14]"], [class*="bg-[#080d1a]"], [class*="bg-[#0A0F18]"], [class*="bg-[#0B1120]"], [class*="bg-[#0B1329]"], [class*="bg-[#0D121F]"], [class*="bg-[#0F172A]"], [class*="bg-[#10151E]"], [class*="bg-[#111827]"], [class*="bg-[#131720]"], [class*="bg-[#181d29]"], [class*="bg-[#1d2433]"], [class*="bg-[#222731]"], [class*="bg-[#2d333d]"], [class*="bg-slate-950"], [class*="bg-slate-900"], [class*="bg-slate-800"], [class*="bg-slate-700"], [class*="bg-slate-600"], [class*="bg-slate-500"], [class*="bg-neutral-950"], [class*="bg-white/5"], [class*="bg-white/10"], [class*="bg-white/15"], [class*="bg-white/20"]) {
+    background-color: var(--bg-card) !important;
+}
+
+html:not(.dark) :is([class*="bg-black/"]):not(.fixed) {
+    background-color: #f8faff !important;
+}
+
+html:not(.dark) :is([class*="hover:bg-slate"], [class*="hover:bg-white/"], [class*="hover:bg-neutral"]):hover {
+    background-color: var(--bg-secondary) !important;
+}
+
+html:not(.dark) :is([class*="border-white"], [class*="border-[#1e2633]"], [class*="border-slate"]) {
+    border-color: var(--border-color) !important;
+}
+
+html:not(.dark) :is([class*="text-white"], [class*="text-slate-100"], [class*="text-slate-200"], [class*="text-slate-300"], [class*="text-[#c1c6d5]"], [class*="text-[#dae2fd]"], [class*="text-[#e0e2eb]"]) {
+    color: var(--text-primary) !important;
+}
+
+html:not(.dark) :is([class*="text-slate-400"], [class*="text-[#8b919e]"]) {
+    color: var(--text-secondary) !important;
+}
+
+html:not(.dark) :is([class*="text-slate-500"], [class*="text-slate-600"]) {
+    color: var(--text-muted) !important;
+}
+
+/* Preserve high contrast on primary and destructive actions. */
+html:not(.dark) :is(a[class*="bg-blue"], a[class*="bg-violet"], a[class*="bg-indigo"], a[class*="bg-purple"], a[class*="bg-cyan"], a[class*="bg-emerald"], a[class*="bg-gradient"], button[class*="bg-blue"], button[class*="bg-violet"], button[class*="bg-indigo"], button[class*="bg-purple"], button[class*="bg-cyan"], button[class*="bg-emerald"], button[class*="bg-gradient"], button[class*="bg-red"]),
+html:not(.dark) :is(a[class*="bg-blue"], a[class*="bg-violet"], a[class*="bg-indigo"], a[class*="bg-purple"], a[class*="bg-cyan"], a[class*="bg-emerald"], a[class*="bg-gradient"], button[class*="bg-blue"], button[class*="bg-violet"], button[class*="bg-indigo"], button[class*="bg-purple"], button[class*="bg-cyan"], button[class*="bg-emerald"], button[class*="bg-gradient"], button[class*="bg-red"]) :is([class*="text-white"], [class*="text-slate-100"], [class*="text-slate-200"], [class*="text-slate-300"]) {
+    color: #ffffff !important;
+}
+
+html:not(.dark) .dashboard-hero h2,
+html:not(.dark) .dashboard-hero p {
+    color: #ffffff !important;
+}
+
+html:not(.dark) .global-theme-control {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 100;
+}
+
+html:not(.dark) .global-theme-control .theme-toggle {
+    box-shadow:
+        0 8px 24px rgb(71 85 105 / 0.18),
+        inset 0 0 0 1px #dfe4ff;
+}
+
+html.dark .global-theme-control {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 100;
+}
+
+/* =========================
+   GLOBAL
+========================= */
+
+html,
+body,
+#root {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+
+    transition:
+        background-color 0.25s ease,
+        color 0.25s ease;
+}
+
+/* =========================
+   INPUT
+========================= */
+
+input,
+textarea,
+select {
+    background-color: var(--bg-input);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: var(--text-muted);
+}
+
+/* Ẩn icon con mắt */
+
 input::-ms-reveal,
 input::-ms-clear {
     display: none;
@@ -12,26 +273,50 @@ input::-webkit-textfield-decoration-container {
     display: none !important;
 }
 
+/* =========================
+   AUTOFILL
+========================= */
 
-/* Ẩn màu autofill của google */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 textarea:-webkit-autofill,
-select:-webkit-autofill {
-    -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.08) inset !important;
-    -webkit-text-fill-color: white !important;
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px var(--bg-input) inset !important;
+
+    -webkit-text-fill-color: var(--text-primary) !important;
+
+    caret-color: var(--text-primary);
+
     transition: background-color 9999s ease-in-out 0s;
-    caret-color: white;
 }
 
+/* =========================
+   UTILITY CLASSES (TỐI ƯU CODE REACT)
+========================= */
 
-html,
-body,
-#root {
-    width: 100%;
-    min-height: 100%;
-    overflow-x: hidden;
+.app-card {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
 
+.app-bg-secondary {
+    background-color: var(--bg-secondary);
+}
 
+.app-text-secondary {
+    color: var(--text-secondary);
+}
+
+.app-text-muted {
+    color: var(--text-muted);
+}
+
+.app-border {
+    border-color: var(--border-color);
 }

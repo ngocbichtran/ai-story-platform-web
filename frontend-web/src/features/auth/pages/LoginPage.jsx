@@ -13,9 +13,8 @@ const LoginPage = () => {
     const loginWithGoogle = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
             try {
-                // `tokenResponse.access_token` chứa Access Token của Google
                 const res = await axios.post("https://api.baostory.fun/api/auth/google", {
-                    token: tokenResponse.access_token, // Gửi access_token về Backend
+                    token: tokenResponse.access_token,
                 });
 
                 if (res.data?.token) {
@@ -44,7 +43,7 @@ const LoginPage = () => {
                 <div className="absolute inset-0 bg-neutral-950/55 backdrop-blur-[3px]" />
             </div>
 
-            {/* ================= NỬA TRÁI: KHÔNG GIAN BÀI VIẾT & TÍNH NĂNG ================= */}
+            {/* KHÔNG GIAN BÀI VIẾT & TÍNH NĂNG */}
             <div className="relative z-5 w-full md:w-[55%] flex items-center justify-center p-3 sm:p-12 md:p-16 border-b md:border-b-0 md:border-r border-white/5 bg-neutral-950/30 backdrop-blur-md">
                 <div className="max-w-xl space-y-8 text-left">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-semibold tracking-wider uppercase">
@@ -95,7 +94,7 @@ const LoginPage = () => {
                 </div>
             </div>
 
-            {/* ================= NỬA PHẢI: GIAO DIỆN ĐĂNG NHẬP ================= */}
+            {/* NỬA PHẢI: GIAO DIỆN ĐĂNG NHẬP */}
             <div className="relative z-5 w-full md:w-[45%] flex items-center justify-center p-3 sm:p-12 bg-neutral-950/10 backdrop-blur-sm">
                 <div className="w-full max-w-[420px] transition-all duration-700 hover:scale-[1.01] group">
                     <div className="absolute -inset-4 bg-gradient-to-tr from-purple-600/15 via-indigo-500/5 to-fuchsia-500/15 rounded-[40px] blur-2xl opacity-80 group-hover:opacity-100 transition duration-700 pointer-events-none" />
@@ -114,7 +113,7 @@ const LoginPage = () => {
                             <p className="text-xs sm:text-sm text-purple-200/60 mt-3 mb-10 tracking-wide">Chào mừng bạn đến với BaoStory!</p>
                         </div>
 
-                        {/* CUSTOM GOOGLE BUTTON (Kích hoạt trực tiếp qua hook `loginWithGoogle()`) */}
+                        {/* CUSTOM GOOGLE BUTTON */}
                         <div className="relative z-5 w-full mx-auto">
                             <div className="absolute -inset-px bg-gradient-to-r from-indigo-500/0 via-purple-400/40 to-fuchsia-500/0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 

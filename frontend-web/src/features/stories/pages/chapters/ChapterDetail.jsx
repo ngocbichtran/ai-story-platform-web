@@ -7,11 +7,7 @@ import { ArrowLeft, BookOpen, CalendarDays, Clock3, Edit3, FileText, Loader2, Do
 export default function ChapterDetailPage() {
     const navigate = useNavigate();
     const { storyId, chapterNumber } = useParams();
-
-    // LOADING
     const [loading, setLoading] = useState(true);
-
-    // CHAPTER
     const [chapter, setChapter] = useState(null);
     const [chapterTitle, setChapterTitle] = useState("");
     const [displayContent, setDisplayContent] = useState("");
@@ -20,20 +16,14 @@ export default function ChapterDetailPage() {
     const loadChapter = async () => {
         try {
             setLoading(true);
-
             const res = await axios.get(`https://api.baostory.fun/api/chapters/display-chapter/${storyId}/${chapterNumber}`);
-
             const data = res.data.data || {};
-
             setChapter(data);
             setChapterTitle(data.title || "Chưa đặt tên");
-
-            // API trả về displayContent hoặc content
             setDisplayContent(data.displayContent || data.content || "");
         } catch (err) {
             console.error(err);
             toast.error("Không thể tải nội dung chương.");
-
             setChapter(null);
             setChapterTitle("");
             setDisplayContent("");
@@ -48,12 +38,10 @@ export default function ChapterDetailPage() {
         }
     }, [storyId, chapterNumber]);
 
-    // ACTIONS
     const handleGoToEditor = () => {
         navigate(`/stories/${storyId}/editor/chapter/${chapterNumber}/edit`);
     };
 
-    // HÀM XUẤT FILE RA ĐỊNH DẠNG WORD (.DOC)
     const handleExportWord = () => {
         if (!displayContent || !displayContent.trim()) {
             toast.error("Chương hiện tại đang trống, không thể xuất file!");
@@ -62,7 +50,6 @@ export default function ChapterDetailPage() {
 
         const cleanTitle = (chapterTitle || `chuong-${chapterNumber}`).replace(/[\/\\?%*:|"<>]/g, "").trim();
 
-        // Cấu trúc nội dung chuẩn HTML tương thích tuyệt đối với Microsoft Word
         const wordHtmlContent = `
             <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
             <head>
@@ -84,7 +71,6 @@ export default function ChapterDetailPage() {
             </html>
         `;
 
-        // Kích hoạt tải file dưới dạng tài liệu Word (.doc)
         const blob = new Blob(["\ufeff" + wordHtmlContent], { type: "application/msword" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -94,11 +80,9 @@ export default function ChapterDetailPage() {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-
         toast.success("Đã xuất file Word thành công!");
     };
 
-    // INFO
     const wordCount = useMemo(() => {
         if (!displayContent) return 0;
         return displayContent.trim().split(/\s+/).filter(Boolean).length;
@@ -153,7 +137,6 @@ export default function ChapterDetailPage() {
                             <div className="flex-1 min-w-0 flex flex-col justify-center">
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
                                     <span className="inline-block shrink-0 w-fit rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-blue-400">Chương {chapterNumber}</span>
-
                                     <h1 className="text-xl font-black text-white md:text-2xl break-words line-clamp-1 hover:line-clamp-none transition-all">{chapterTitle}</h1>
                                 </div>
 

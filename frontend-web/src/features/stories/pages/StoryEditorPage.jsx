@@ -8,13 +8,10 @@ export default function StoryEditorPage() {
     const [selectedChapter, setSelectedChapter] = useState(null);
     const [draftContent, setDraftContent] = useState("");
     const [finalContent, setFinalContent] = useState("");
-
     const navigate = useNavigate();
     const { storyId } = useParams();
-    console.log("🔥 STORY ID:", storyId);
     useEffect(() => {
         if (!selectedChapter) return;
-
         loadChapter(selectedChapter);
     }, [selectedChapter]);
 

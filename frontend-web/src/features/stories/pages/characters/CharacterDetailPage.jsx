@@ -8,10 +8,6 @@ export default function CharacterDetailPage() {
     const navigate = useNavigate();
     const { storyId, characterId } = useParams();
     const [infoTab, setInfoTab] = useState("figured");
-
-    // =====================================
-    // STATES CHO DỮ LIỆU API
-    // =====================================
     const [character, setCharacter] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -21,8 +17,6 @@ export default function CharacterDetailPage() {
                 setLoading(true);
                 const token = localStorage.getItem("token");
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-
-                // Gọi API lấy thông tin chi tiết nhân vật theo characterId (Đặc tả 017_F1)
                 const res = await axios.get(`https://api.baostory.fun/api/characters/${characterId}`, config);
                 if (res.data.success) {
                     setCharacter(res.data.data);
@@ -67,20 +61,15 @@ export default function CharacterDetailPage() {
             <div className="absolute bottom-10 right-1/4 h-96 w-96 rounded-full bg-violet-600/10 blur-[150px] pointer-events-none" />
 
             <main className="relative z-10 mx-auto max-w-7xl pt-2 flex-1 flex flex-col gap-4 w-full pb-6">
-                {/* ==========================================
-                    HEADER
-                ========================================== */}
                 <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-xl shrink-0">
                     <div className="absolute -right-20 -top-20 h-28 w-28 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
                     <div className="grid grid-cols-12 items-center gap-3 p-2 relative z-10 w-full">
-                        {/* BACK */}
                         <div className="col-span-12 md:col-span-1">
                             <button onClick={() => navigate(`/stories/${storyId}/editor/characters`)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/5 bg-slate-950/40 py-2.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 hover:text-white active:scale-95">
                                 <ArrowLeft size={15} /> Quay lại
                             </button>
                         </div>
 
-                        {/* TITLE & AVATAR */}
                         <div className="col-span-12 md:col-span-4 flex items-center gap-3 rounded-xl border border-white/5 bg-slate-950/30 p-2">
                             {character.avatar ? (
                                 <img src={character.avatar} alt={character.name} className="h-10 w-10 shrink-0 rounded-xl object-cover border border-blue-500/20" />
@@ -96,7 +85,6 @@ export default function CharacterDetailPage() {
 
                         <div className="hidden md:block md:col-span-5" />
 
-                        {/* EDIT BUTTON */}
                         <div className="col-span-12 md:col-span-2">
                             <button onClick={() => navigate(`/stories/${storyId}/editor/characters/edit/${characterId}`)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-2.5 text-xs font-bold text-white transition hover:opacity-90 active:scale-95 shadow-lg shadow-blue-500/10">
                                 <Pencil size={15} /> Chỉnh sửa
@@ -105,9 +93,6 @@ export default function CharacterDetailPage() {
                     </div>
                 </section>
 
-                {/* ==========================================
-                    CONTENT LAYOUT
-                ========================================== */}
                 <section className="w-full flex-1 flex flex-col min-h-0">
                     <div className="flex-1 flex flex-col rounded-2xl border border-white/10 bg-slate-900/30 backdrop-blur-xl shadow-xl overflow-hidden">
                         {/* SUB TABS */}

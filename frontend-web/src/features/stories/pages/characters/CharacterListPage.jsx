@@ -8,10 +8,8 @@ export default function CharacterListPage() {
     const navigate = useNavigate();
     const { storyId } = useParams();
     const [roleFilter, setRoleFilter] = useState("all");
-
     const [characters, setCharacters] = useState([]);
     const [loading, setLoading] = useState(true);
-
     const fetchCharacters = useCallback(async () => {
         try {
             setLoading(true);

@@ -1,7 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import ThemeToggle from "./components/ThemeToggle";
 // auth
 import LoginPage from "./features/auth/pages/LoginPage";
-import ChangePasswordPage from "./features/dashboard/pages/ChangePasswordPage";
 
 // Khung main
 import HomePage from "./features/dashboard/Home";
@@ -39,9 +39,23 @@ import ChapterPlanEditor from "./features/stories/pages/plans/ChapterPlanEditor"
 //DerivativeStory (Truyện phái sinh)
 import DerivativeStoryPage from "./features/stories/pages/derivativeStory/DerivativeStoryPage";
 
+function GlobalThemeControl() {
+    const { pathname } = useLocation();
+
+    // Dashboard routes already render the control inside their header.
+    if (pathname === "/home" || pathname === "/stories") return null;
+
+    return (
+        <div className="global-theme-control">
+            <ThemeToggle />
+        </div>
+    );
+}
+
 function App() {
     return (
         <BrowserRouter>
+            <GlobalThemeControl />
             <Routes>
                 {/* Default */}
                 <Route path="/" element={<Navigate to="/login" replace />} />
@@ -53,10 +67,9 @@ function App() {
                 <Route element={<MainLayout />}>
                     <Route path="/home" element={<HomePage />} />
                     <Route path="/stories" element={<StoryList />} />
-                    <Route path="/changePassword" element={<ChangePasswordPage />} />
                 </Route>
 
-                {/* Story Editor (Chứa Outlet / Sidebar bên trái) */}
+                {/* Story Editor */}
                 <Route path="/stories/:storyId/editor" element={<StoryEditorPage />}>
                     <Route index element={<Navigate to="overview" replace />} />
                     <Route path="overview" element={<OverviewPage />} />

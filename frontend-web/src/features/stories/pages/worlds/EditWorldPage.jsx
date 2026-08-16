@@ -8,7 +8,6 @@ import WorldForm from "../../components/WorldForm";
 export default function EditWorldPage() {
     const { storyId, worldId } = useParams();
     const navigate = useNavigate();
-
     const [world, setWorld] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -16,10 +15,8 @@ export default function EditWorldPage() {
         const fetchWorldDetail = async () => {
             try {
                 setLoading(true);
-
                 const token = localStorage.getItem("token");
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-
                 const res = await axios.get(`https://api.baostory.fun/api/world/detail/${worldId}`, config);
                 if (res.data.success) {
                     setWorld(res.data.data);
@@ -31,23 +28,17 @@ export default function EditWorldPage() {
                 setLoading(false);
             }
         };
-
         if (worldId && worldId !== "create") {
-            // Tránh trường hợp route "create" bị bắt nhầm thành worldId
             fetchWorldDetail();
         }
     }, [worldId]);
 
-    // 2. HÀM XỬ LÝ CẬP NHẬT (Đặc tả 011_F1)
     const handleUpdateWorld = async (formData) => {
-        // Bước 1: Kiểm tra tính hợp lệ của trường title
         if (!formData.title || !formData.title.trim()) {
             toast.error("Tên thế giới không được bỏ trống");
             return;
         }
-
         try {
-            // Bước 2: Gom nhóm toàn bộ thông tin thay đổi vào Request Body
             const payload = {
                 title: formData.title.trim(),
                 description: formData.description || "",
@@ -60,18 +51,12 @@ export default function EditWorldPage() {
 
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
-
-            // Bước 3: Kích hoạt HTTP PUT Request lên Server
             const res = await axios.put(`https://api.baostory.fun/api/world/${worldId}`, payload, config);
-
-            // Bước 4: Xử lý thành công
             if (res.data.success) {
                 toast.success("Cập nhật thế giới thành công");
-                // Điều hướng màn hình về danh sách tổng quan bối cảnh
                 navigate(`/stories/${storyId}/editor/worlds`);
             }
         } catch (err) {
-            // Xử lý thất bại (Catch)
             console.error("Lỗi cập nhật thế giới:", err);
             const errorMsg = err.response?.data?.message || "Cập nhật thất bại";
             toast.error(errorMsg);

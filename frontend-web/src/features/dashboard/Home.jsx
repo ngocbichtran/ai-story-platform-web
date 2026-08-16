@@ -11,8 +11,6 @@ export default function Home() {
     const [stories, setStories] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [deletingId, setDeletingId] = useState(null);
-
-    // State quản lý Modal Xóa
     const [storyToDelete, setStoryToDelete] = useState(null);
 
     // Lấy danh sách truyện của riêng tác giả
@@ -42,14 +40,12 @@ export default function Home() {
         fetchStoriesData();
     }, []);
 
-    // Hàm thực thi gọi API xóa sau khi bấm Xác nhận trên Modal
     const confirmDeleteStory = async () => {
         if (!storyToDelete) return;
 
         try {
             setDeletingId(storyToDelete.id);
             const token = localStorage.getItem("token");
-
             const response = await axios.delete(`https://api.baostory.fun/api/stories/${storyToDelete.id}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -65,7 +61,7 @@ export default function Home() {
             toast.error(error.response?.data?.message || "Xóa tác phẩm thất bại.");
         } finally {
             setDeletingId(null);
-            setStoryToDelete(null); // Đóng modal
+            setStoryToDelete(null);
         }
     };
 
@@ -73,10 +69,13 @@ export default function Home() {
         return story.title?.toLowerCase().includes(search.toLowerCase()) || story.description?.toLowerCase().includes(search.toLowerCase());
     });
 
+    // Kiểm tra xem đã có truyện gốc nào chưa (truyện không có original_story_id hoặc original_story_id bằng null/0)
+    const hasOriginalStory = stories.some((story) => !story.original_story_id);
+
     return (
-        <div className="relative min-h-screen space-y-8">
+        <div className="dashboard-home relative min-h-screen space-y-8">
             {/* BANNER BAN ĐẦU */}
-            <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/5 backdrop-blur-xl animate-fadeIn">
+            <section className="dashboard-hero relative overflow-hidden rounded-[32px] border border-white/10 bg-white/5 backdrop-blur-xl animate-fadeIn">
                 <img src={banner} alt="Banner" className="w-full h-[380px] object-cover opacity-90 hover:scale-[1.02] transition-transform duration-[4000ms]" />
                 <div className="absolute inset-0 bg-gradient-to-r from-[#0B1120]/90 to-transparent" />
                 <div className="absolute inset-0 flex items-center px-10">
@@ -90,7 +89,17 @@ export default function Home() {
                                 Tạo truyện mới
                             </Link>
 
-                            <Link to="/stories/derivative/create" className="inline-flex items-center gap-2 h-12 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 hover:scale-105 text-white font-semibold shadow-2xl transition-all duration-300">
+                            {/* NÚT TẠO TRUYỆN PHÁI SINH */}
+                            <Link
+                                to={hasOriginalStory ? "/stories/derivative/create" : "#"}
+                                onClick={(e) => {
+                                    if (!hasOriginalStory) {
+                                        e.preventDefault();
+                                        toast.error("Bạn cần phải có ít nhất một truyện trước khi tạo truyện phái sinh!");
+                                    }
+                                }}
+                                className={`inline-flex items-center gap-2 h-12 px-6 rounded-2xl font-semibold shadow-2xl transition-all duration-300 bg-gradient-to-r from-blue-600 to-violet-600 text-white ${hasOriginalStory ? "hover:scale-105 cursor-pointer" : "cursor-not-allowed hover:scale-100"}`}
+                            >
                                 <Plus className="w-4 h-4" /> Tạo truyện phái sinh
                             </Link>
                         </div>
@@ -99,7 +108,7 @@ export default function Home() {
             </section>
 
             {/* SECTION TITLE & COUNTER */}
-            <div className="flex items-end justify-between border-b border-white/5 pb-2">
+            <div className="dashboard-section-heading flex items-end justify-between border-b border-white/5 pb-2">
                 <h2 className="text-2xl md:text-3xl font-black text-white">Đang sáng tác</h2>
                 <p className="text-slate-400 text-sm">{isLoading ? "..." : `${filteredStories.length} truyện`}</p>
             </div>
@@ -114,7 +123,7 @@ export default function Home() {
                 /* STORIES GRID */
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
                     {filteredStories.map((story) => (
-                        <div key={story.id} className="group flex items-start gap-4 p-4 bg-slate-950/40 backdrop-blur-md border border-white/10 rounded-2xl hover:border-violet-500/50 hover:bg-slate-950/60 hover:-translate-y-0.5 hover:shadow-[0_0_20px_rgba(139,92,246,0.15)] transition-all duration-300">
+                        <div key={story.id} className="story-card group flex items-start gap-4 p-4 bg-slate-950/40 backdrop-blur-md border border-white/10 rounded-2xl hover:border-violet-500/50 hover:bg-slate-950/60 hover:-translate-y-0.5 hover:shadow-[0_0_20px_rgba(139,92,246,0.15)] transition-all duration-300">
                             {/* 1. KHU VỰC ẢNH BÌA */}
                             <div className="w-24 h-32 rounded-xl overflow-hidden bg-slate-900 shrink-0 flex items-center justify-center relative border border-white/10 shadow-lg">
                                 {story.cover_image ? (

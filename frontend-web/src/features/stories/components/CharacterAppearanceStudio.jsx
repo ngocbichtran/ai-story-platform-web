@@ -8,8 +8,6 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
     const [countdown, setCountdown] = useState(20);
     const [selectedCharacterId, setSelectedCharacterId] = useState("");
     const [aiResult, setAiResult] = useState(null);
-
-    // State quản lý trạng thái mở/thu gọn của cột Nhân vật gốc (Giống hệt kiểu showAISidebar)
     const [isOriginalOpen, setIsOriginalOpen] = useState(true);
 
     // Đồng hồ đếm ngược khi AI đang chạy
@@ -23,9 +21,6 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
         return () => clearInterval(timer);
     }, [isLoading, countdown]);
 
-    // =========================
-    // TEXT CHANGE (Chỉnh sửa cột 3)
-    // =========================
     const handleTextChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({
@@ -34,9 +29,7 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
         }));
     };
 
-    // =========================
     // CHỌN NHÂN VẬT NGUỒN
-    // =========================
     const handleSelectCharacter = (e) => {
         const selectedValue = e.target.value;
         setSelectedCharacterId(selectedValue);
@@ -79,14 +72,12 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
             goal: selectedCharacter.goal || "",
             ability: selectedCharacter.ability || "",
             development: selectedCharacter.development || "",
-
             appearanceReverse: "",
             personalityReverse: "",
             backgroundReverse: "",
             goalReverse: "",
             abilityReverse: "",
             developmentReverse: "",
-
             appearanceFinal: "",
             personalityFinal: "",
             backgroundFinal: "",
@@ -97,9 +88,7 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
         setAiResult(null);
     };
 
-    // =========================
     // AI n8n GENERATE
-    // =========================
     const handleGenerateAI = async () => {
         if (!selectedCharacterId) {
             return toast.error("Vui lòng chọn nhân vật gốc trước khi chạy AI n8n!");
@@ -137,7 +126,6 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
                     goalReverse: rawData.goal || "",
                     abilityReverse: rawData.ability || "",
                     developmentReverse: rawData.development || "",
-
                     appearanceFinal: rawData.appearance || "",
                     personalityFinal: rawData.personality || "",
                     backgroundFinal: rawData.background || "",
@@ -207,7 +195,6 @@ export default function CharacterAppearanceStudio({ formData, setFormData, allCh
                     </div>
                 </section>
 
-                {/* WORKSPACE: FLEX ĐỂ ĐIỀU KHIỂN ĐÓNG MỞ CỘT 1 MƯỢT MÀ */}
                 <section className="flex-1 flex gap-6 min-h-0 items-stretch overflow-hidden">
                     {/* NÚT MỞ NHANH KHI CỘT 1 BỊ ĐÓNG (GIỐNG THANH BÊN TRỢ LÝ AI) */}
                     {!isOriginalOpen && (

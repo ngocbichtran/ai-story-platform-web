@@ -7,14 +7,9 @@ import { ArrowLeft, Globe2, Map, Sparkles, Loader2 } from "lucide-react";
 export default function DetailWorldPage() {
     const navigate = useNavigate();
     const { storyId, worldId } = useParams();
-
     const [mainTab, setMainTab] = useState("info");
     const [infoTab, setInfoTab] = useState("description");
     const [mechanicTab, setMechanicTab] = useState("power");
-
-    // =========================
-    // STATES CHO DỮ LIỆU THẬT TỪ API
-    // =========================
     const [world, setWorld] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -24,8 +19,6 @@ export default function DetailWorldPage() {
                 setLoading(true);
                 const token = localStorage.getItem("token");
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-
-                // Gọi API lấy chi tiết thế giới theo worldId
                 const res = await axios.get(`https://api.baostory.fun/api/world/detail/${worldId}`, config);
                 if (res.data.success) {
                     setWorld(res.data.data);
@@ -37,7 +30,6 @@ export default function DetailWorldPage() {
                 setLoading(false);
             }
         };
-
         if (worldId) {
             fetchWorldDetail();
         }
@@ -65,12 +57,10 @@ export default function DetailWorldPage() {
 
     return (
         <div className="relative min-h-screen overflow-hidden bg-[#070b14] text-white font-sans antialiased">
-            {/* Background Glows */}
             <div className="absolute left-1/4 top-10 h-96 w-96 rounded-full bg-blue-600/10 blur-[150px] pointer-events-none" />
             <div className="absolute bottom-10 right-1/4 h-96 w-96 rounded-full bg-violet-600/10 blur-[150px] pointer-events-none" />
 
             <main className="relative z-10 mx-auto max-w-7xl px-4 pt-6 flex flex-col gap-4">
-                {/* ================= HEADER ================= */}
                 <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/40 p-4 backdrop-blur-xl shadow-xl">
                     <div className="absolute -right-20 -top-20 h-32 w-32 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
                     <div className="grid gap-3 grid-cols-12 items-center relative z-10 w-full">
@@ -106,7 +96,6 @@ export default function DetailWorldPage() {
                     </div>
                 </section>
 
-                {/* ================= CONTENT CONTAINER ================= */}
                 <div className="w-full min-h-[500px] flex flex-col">
                     {/* TAB 1: THÔNG TIN THẾ GIỚI */}
                     {mainTab === "info" && (
@@ -136,7 +125,6 @@ export default function DetailWorldPage() {
                     {mainTab === "data" && (
                         <section className="flex-1 flex flex-col rounded-2xl border border-white/10 bg-slate-900/30 p-4 backdrop-blur-xl shadow-xl transition-all duration-300">
                             <div className="grid flex-1 gap-4 lg:grid-cols-12">
-                                {/* ASIDE: Địa danh (4 Cột) */}
                                 <div className="lg:col-span-4 flex flex-col rounded-xl border border-white/10 bg-slate-950/20 p-4 h-[480px]">
                                     <div className="flex items-center gap-2 border-b border-white/10 pb-3">
                                         <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-500/20 bg-cyan-500/10">
@@ -159,7 +147,6 @@ export default function DetailWorldPage() {
                                     </div>
                                 </div>
 
-                                {/* MAIN: Cơ chế vận hành (8 Cột) */}
                                 <div className="lg:col-span-8 flex flex-col rounded-xl border border-white/10 bg-slate-950/20 p-4 h-[480px]">
                                     <div className="flex items-center justify-between border-b border-white/10 pb-3">
                                         <div className="flex items-center gap-2">
@@ -178,7 +165,6 @@ export default function DetailWorldPage() {
                                         </div>
                                     </div>
 
-                                    {/* Khối content cơ chế */}
                                     <div className="mt-3 flex-1 overflow-y-auto pr-1 custom-scroll">
                                         {mechanicTab === "power" && (
                                             <div className="flex flex-col gap-2 w-full">

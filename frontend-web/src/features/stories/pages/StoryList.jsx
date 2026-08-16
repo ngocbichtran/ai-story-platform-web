@@ -11,10 +11,8 @@ export default function StoryList() {
     const [isLoading, setIsLoading] = useState(true);
     const [deletingId, setDeletingId] = useState(null);
     const [downloadingId, setDownloadingId] = useState(null);
-    const [activeTab, setActiveTab] = useState("regular"); // 'regular' hoặc 'derivative'
-
-    // State quản lý Modal Xóa
-    const [storyToDelete, setStoryToDelete] = useState(null); // Lưu thông tin truyện chuẩn bị xóa
+    const [activeTab, setActiveTab] = useState("regular");
+    const [storyToDelete, setStoryToDelete] = useState(null);
 
     const fetchStoriesData = async () => {
         try {
@@ -36,7 +34,6 @@ export default function StoryList() {
         fetchStoriesData();
     }, []);
 
-    // Lọc truyện Gốc vs Phái sinh (Hỗ trợ kiểm tra linh hoạt các tên trường id gốc)
     const filteredStories = useMemo(() => {
         const lowerSearch = search.toLowerCase();
         return stories.filter((story) => {
@@ -84,7 +81,6 @@ export default function StoryList() {
         }
     };
 
-    // Hàm thực thi gọi API xóa sau khi người dùng bấm Xác nhận trên Modal
     const confirmDeleteStory = async () => {
         if (!storyToDelete) return;
 
@@ -99,25 +95,33 @@ export default function StoryList() {
             toast.error("Xóa thất bại.");
         } finally {
             setDeletingId(null);
-            setStoryToDelete(null); // Đóng modal và reset state
+            setStoryToDelete(null);
         }
     };
-
+    // Kiểm tra xem đã có truyện gốc nào chưa (truyện không có original_story_id hoặc original_story_id bằng null/0)
+    const hasOriginalStory = stories.some((story) => !story.original_story_id);
     return (
-        /* 🟢 1. THẺ BỌC NGOÀI CÙNG CHO TOÀN BỘ TRANG */
-        <div className="relative min-h-screen">
+        <div className="story-library relative min-h-screen">
             {/* 2. KHUNG NỘI DUNG CHÍNH (Kho Truyện) */}
-            <div className="bg-[#0B1120]/70 backdrop-blur-md border border-white/10 rounded-[32px] p-8 shadow-2xl relative z-10">
+            <div className="story-library__panel bg-[#0B1120]/70 backdrop-blur-md border border-white/10 rounded-[32px] p-8 shadow-2xl relative z-10">
                 <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
                     <h1 className="text-2xl font-black text-white">Kho Truyện Của Bạn</h1>
-
-                    {/* Cụm nút hành động góc phải */}
                     <div className="flex items-center gap-2">
                         <Link to="/stories/create" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-500 transition shadow-lg shadow-blue-600/10 active:scale-95">
                             <Plus size={14} /> Tạo truyện mới
                         </Link>
 
-                        <Link to="/stories/derivative/create" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 text-white font-bold text-xs hover:bg-violet-500 transition shadow-lg shadow-violet-600/10 active:scale-95">
+                        {/* NÚT TẠO TRUYỆN PHÁI SINH: CHẶN CLICK VÀ HIỆN THÔNG BÁO KHI RÊ CHUỘT */}
+                        <Link
+                            to={hasOriginalStory ? "/stories/derivative/create" : "#"}
+                            onClick={(e) => {
+                                if (!hasOriginalStory) {
+                                    e.preventDefault();
+                                    toast.error("Bạn cần phải có ít nhất một truyện trước khi tạo truyện phái sinh!");
+                                }
+                            }}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-lg active:scale-95 ${hasOriginalStory ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white hover:scale-105 cursor-pointer shadow-violet-600/10" : "bg-violet-600 text-white cursor-not-allowed shadow-violet-600/10"}`}
+                        >
                             <Plus className="w-4 h-4" /> Tạo truyện phái sinh
                         </Link>
                     </div>
@@ -140,7 +144,7 @@ export default function StoryList() {
                 ) : filteredStories.length > 0 ? (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {filteredStories.map((story) => (
-                            <div key={story.id} className="flex gap-4 p-4 bg-slate-950/30 border border-white/5 rounded-2xl">
+                            <div key={story.id} className="library-story-card flex gap-4 p-4 bg-slate-950/30 border border-white/5 rounded-2xl">
                                 <div className="w-20 h-28 rounded-lg bg-slate-900 overflow-hidden shrink-0 border border-white/10">{story.cover_image && <img src={story.cover_image} className="w-full h-full object-cover" />}</div>
                                 <div className="flex-1 flex flex-col justify-between">
                                     <h3 className="font-bold text-white text-sm line-clamp-1">{story.title}</h3>
@@ -149,7 +153,6 @@ export default function StoryList() {
                                         <button onClick={() => handleDownloadStory(story.id, story.title)} className="p-2 rounded-lg bg-white/5 hover:text-emerald-400 transition" title="Tải xuống">
                                             <Download size={14} />
                                         </button>
-                                        {/* Mở Modal Xóa thay cho window.confirm */}
                                         <button onClick={() => setStoryToDelete(story)} className="p-2 rounded-lg bg-white/5 hover:text-red-400 transition" title="Xóa tác phẩm">
                                             <Trash2 size={14} />
                                         </button>
@@ -166,7 +169,6 @@ export default function StoryList() {
                 )}
             </div>
 
-            {/* 🟢 3. ĐƯA CUSTOM MODAL RA NGOÀI KHUNG NỘI DUNG ĐỂ PHỦ KÍN FULL MÀN HÌNH */}
             <CustomModal isOpen={!!storyToDelete} onClose={() => setStoryToDelete(null)} onConfirm={confirmDeleteStory} title="Xác nhận xóa tác phẩm" message={`Bạn có chắc chắn muốn xóa vĩnh viễn tác phẩm "${storyToDelete?.title}" không? Hành động này không thể hoàn tác.`} confirmText="Xóa tác phẩm" cancelText="Hủy" type="danger" />
         </div>
     );

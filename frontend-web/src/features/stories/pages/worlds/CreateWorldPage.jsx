@@ -12,8 +12,6 @@ export default function CreateWorldPage() {
         try {
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
-
-            // Đính kèm storyId vào payload gửi lên API POST /api/worlds
             const payload = {
                 storyId: Number(storyId),
                 ...formData,

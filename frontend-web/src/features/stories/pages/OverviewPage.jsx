@@ -6,29 +6,18 @@ import axios from "axios";
 
 export default function ViewStoryDetail() {
     const navigate = useNavigate();
-    const { storyId } = useParams(); // Lấy ID truyện từ URL thanh địa chỉ
-
-    // =========================
-    // STATE DỮ LIỆU THỰC TẾ
-    // =========================
+    const { storyId } = useParams();
     const [story, setStory] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // =========================
-    // API: LẤY CHI TIẾT TỔNG HỢP DASHBOARD
-    // =========================
     useEffect(() => {
         const fetchStoryDetail = async () => {
             try {
                 setIsLoading(true);
                 const token = localStorage.getItem("token");
-
-                // Cấu hình header đính kèm Bearer Token xác thực an toàn
                 const config = {
                     headers: { Authorization: `Bearer ${token}` },
                 };
-
-                // Gọi API getStoryDetails tổng hợp dữ liệu chéo MySQL + MongoDB
                 const res = await axios.get(`https://api.baostory.fun/api/stories/${storyId}`, config);
 
                 if (res.data.success) {
@@ -55,11 +44,8 @@ export default function ViewStoryDetail() {
         );
     }
 
-    // Hiển thị danh sách thể loại (Nhận chuỗi text từ database đã gộp bởi GROUP_CONCAT)
     const renderGenres = () => {
         if (!story?.genres) return <span className="text-sm text-slate-500">Chưa chọn thể loại</span>;
-
-        // Cắt chuỗi thể loại "Hành Động, Phiêu Lưu" thành mảng phẳng để hiển thị thẻ tag
         const genresArray = story.genres.split(", ");
         return genresArray.map((genreName, index) => (
             <span key={index} className="rounded-full bg-violet-500/20 px-3 py-1 text-xs text-violet-300 font-medium border border-violet-500/10">
@@ -89,34 +75,26 @@ export default function ViewStoryDetail() {
                             </div>
 
                             <div className="flex items-center gap-3">
-                                {/* Nút chuyển hướng sang chế độ CHỈNH SỬA FORM */}
                                 <button onClick={() => navigate(`/stories/${storyId}/edit`)} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:scale-[1.03] hover:shadow-lg hover:shadow-blue-500/20 active:scale-95">
                                     Chỉnh sửa truyện
                                 </button>
                             </div>
                         </div>
 
-                        {/* DISPLAY CONTENT (CHẾ ĐỘ XEM CHI TIẾT) */}
+                        {/* DISPLAY CONTENT */}
                         <div className="flex flex-1 flex-col gap-6 p-6">
-                            {/* Row 1: Cover + Title + Genres */}
                             <div className="flex gap-6 items-start border-b border-white/5 pb-6">
-                                {/* Bìa truyện */}
                                 <div className="flex aspect-[3/4] w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-inner">{story?.cover_image ? <img src={story.cover_image} alt="Cover" className="h-full w-full object-cover" /> : <span className="text-xs text-slate-500 text-center p-2">Chưa có ảnh bìa</span>}</div>
-
-                                {/* Thông tin cơ bản */}
                                 <div className="flex-1 space-y-3">
                                     <h1 className="text-3xl font-bold tracking-tight text-white break-words">{story?.title || "Chưa đặt tên truyện"}</h1>
-
                                     <div className="flex flex-col gap-1.5">
                                         <div className="flex flex-wrap gap-2">{renderGenres()}</div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Row 2: Description Text (Định dạng hiển thị thuần văn bản) */}
                             <div className="flex flex-col gap-2">
                                 <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">Tóm tắt nội dung cốt truyện</h3>
-
                                 <div className="w-full min-h-[170px] rounded-2xl border border-white/5 bg-black/20 p-5 text-slate-300 text-sm leading-relaxed whitespace-pre-wrap break-words border-dashed">{story?.description || "Tác phẩm này chưa có bài viết tóm tắt mô tả cốt truyện."}</div>
                             </div>
                         </div>

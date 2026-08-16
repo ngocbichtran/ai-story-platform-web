@@ -24,16 +24,20 @@ export default function CreateStory() {
     const [coverFile, setCoverFile] = useState(null);
     const [isReversing, setIsReversing] = useState(false);
     const DEFAULT_COVERS = ["https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=500&auto=format&fit=crop&q=60", "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&auto=format&fit=crop&q=60", "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=500&auto=format&fit=crop&q=60", "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=500&auto=format&fit=crop&q=60"];
+
     // Lấy danh sách thể loại
     const fetchGenres = async () => {
         try {
             const res = await axios.get("https://api.baostory.fun/api/genres");
             if (res.data.success) {
-                setGenres(res.data.data);
+                setGenres(res.data.data || []);
+                return res.data.data || [];
             }
         } catch (err) {
-            console.error("Lỗi lấy thể loại:", err);
+            console.error("Lỗi lấy danh sách thể loại:", err);
+            toast.error("Không thể tải danh mục thể loại.");
         }
+        return [];
     };
 
     // Tạo thể loại mới
@@ -46,7 +50,7 @@ export default function CreateStory() {
         try {
             const token = localStorage.getItem("token");
             if (!token) {
-                toast.error("Không tìm thấy phiên đăng nhập. Vui lòng đăng nhập lại!");
+                toast.error("Bạn cần đăng nhập để thực hiện chức năng này.");
                 return;
             }
 
@@ -57,24 +61,28 @@ export default function CreateStory() {
                     description: "",
                 },
                 {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: { Authorization: `Bearer ${token}` },
                 }
             );
 
-            if (res.data.success) {
-                await fetchGenres();
+            if (res.data.success || res.data.id || res.data.data) {
+                const updatedGenres = await fetchGenres();
+                const createdGenre = updatedGenres.find((g) => g.name.toLowerCase() === newGenre.trim().toLowerCase());
+
+                if (createdGenre && !selectedGenres.some((g) => g.id === createdGenre.id)) {
+                    setSelectedGenres((prev) => [...prev, createdGenre]);
+                }
+
                 setNewGenre("");
-                toast.success("Tạo thể loại thành công!");
+                toast.success("Tạo thể loại mới thành công!");
             }
         } catch (err) {
-            console.error("Lỗi tạo thể loại từ Client:", err);
+            console.error("Lỗi tạo thể loại:", err);
             toast.error(err.response?.data?.message || "Không thể tạo thể loại.");
         }
     };
 
-    // XÓA MỀM THỂ LOẠI (Frontend - CreateStory.jsx)
+    // XÓA MỀM THỂ LOẠI
     const handleDeleteGenre = async (e, genre) => {
         e.stopPropagation();
 
@@ -83,22 +91,14 @@ export default function CreateStory() {
 
         try {
             const token = localStorage.getItem("token");
-            if (!token) {
-                toast.error("Bạn cần đăng nhập để thực hiện chức năng này.");
-                return;
-            }
+            if (!token) return toast.error("Bạn cần đăng nhập để thực hiện chức năng này.");
 
             const res = await axios.delete(`https://api.baostory.fun/api/genres/${genre.id}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { Authorization: `Bearer ${token}` },
             });
 
             if (res.data.success) {
-                // Gỡ bỏ khỏi danh sách đang chọn ở giao diện nếu lỡ chọn trúng cái vừa xóa
                 setSelectedGenres((prev) => prev.filter((g) => g.id !== genre.id));
-
-                // Tải lại danh sách (Chỉ còn các thể loại chưa bị xóa mềm)
                 await fetchGenres();
                 toast.success("Đã chuyển thể loại vào thùng rác!");
             }
@@ -110,24 +110,17 @@ export default function CreateStory() {
 
     // Chọn / Bỏ chọn thể loại
     const toggleGenre = (genre) => {
-        setSelectedGenres((prev) => {
-            if (prev.some((g) => g.id === genre.id)) {
-                return prev.filter((g) => g.id !== genre.id);
-            }
-            return [...prev, genre];
-        });
+        if (selectedGenres.some((g) => g.id === genre.id)) {
+            setSelectedGenres(selectedGenres.filter((g) => g.id !== genre.id));
+        } else {
+            setSelectedGenres([...selectedGenres, genre]);
+        }
     };
+
     // Xử lý khi chọn ảnh mẫu có sẵn
     const handleSelectDefaultCover = (url) => {
         setCoverPreview(url);
-        setCoverFile(null); // QUAN TRỌNG: Xóa file upload từ máy đi vì đang dùng ảnh mẫu
-    };
-    const handleCoverChange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        setCoverFile(file);
-        setCoverPreview(URL.createObjectURL(file));
+        setCoverFile(null);
     };
 
     const handleCopy = async (id, text) => {
@@ -136,6 +129,7 @@ export default function CreateStory() {
         setCopied(id);
         setTimeout(() => setCopied(""), 2000);
     };
+
     // Danh sách truyện của user
     const fetchStories = async () => {
         try {
@@ -159,6 +153,7 @@ export default function CreateStory() {
             setLoadingStories(false);
         }
     };
+
     // =========================
     // API: AI ĐẢO NGƯỢC Ý TƯỞNG
     // =========================
@@ -167,14 +162,10 @@ export default function CreateStory() {
             toast.error("Vui lòng chọn tác phẩm.");
             return;
         }
-
         try {
             setIsReversing(true);
             const token = localStorage.getItem("token");
-
-            // Tìm truyện được chọn để lấy nội dung mô tả gửi kèm lên (nếu Webhook cần)
-            const currentSelected = userStories.find((story) => Number(story.id) === Number(selectedStory));
-
+            const currentSelected = stories.find((story) => Number(story.id) === Number(selectedStory));
             const res = await axios.post(
                 `https://api.baostory.fun/api/stories/${selectedStory}/reverse-description`,
                 {
@@ -185,11 +176,8 @@ export default function CreateStory() {
                 }
             );
 
-            // Kiểm tra success và lấy kết quả trực tiếp từ res.data
             if (res.data.success) {
-                // Sửa lại thành res.data.reverseDescription (hoặc fallback res.data.data?.reverseDescription)
                 const resultText = res.data.reverseDescription || res.data.data?.reverseDescription;
-
                 setStoryPlanning(resultText);
                 toast.success("Đảo ngược ý tưởng thành công!");
             } else {
@@ -202,28 +190,25 @@ export default function CreateStory() {
             setIsReversing(false);
         }
     };
-    // Load dữ liệu ban đầu
+
     useEffect(() => {
         fetchStories();
         fetchGenres();
     }, []);
 
-    // Khi đổi tác phẩm được chọn thì hiển thị mô tả gốc
     useEffect(() => {
         if (!selectedStory) {
             setReverseIdea("");
             return;
         }
-
         const story = stories.find((story) => Number(story.id) === Number(selectedStory));
-
         if (story) {
             setReverseIdea(story.description || "");
         }
     }, [selectedStory, stories]);
-
     const preparePayload = () => {
-        const genreIds = selectedGenres.map((g) => g.id);
+        // Chuyển đổi ID sang dạng số (Number) để đồng bộ kiểu dữ liệu với Database
+        const genreIds = selectedGenres.map((g) => Number(g.id));
         const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
         const localPath = `/baostory/workspace/stories/${slug}`;
 
@@ -231,10 +216,11 @@ export default function CreateStory() {
             title: title,
             description: summary,
             local_folder_path: localPath,
-            genre_ids: genreIds,
-            cover_image: coverPreview, // 👈 Thêm dòng này để gửi URL ảnh mẫu hoặc ảnh preview lên server
+            genreIds: genreIds, // <--- Đổi từ genre_ids thành genreIds cho khớp với Backend
+            coverImage: coverPreview, // (Đổi luôn cover_image thành coverImage nếu backend của bạn hứng coverImage)
         };
     };
+
     // Tạo truyện mới
     const handleCreate = async () => {
         if (!title.trim()) return toast.error("Vui lòng nhập tên truyện!");
@@ -243,7 +229,6 @@ export default function CreateStory() {
 
         setIsCreating(true);
         try {
-            // Gọi API gộp duy nhất lên Backend
             const initResponse = await fetch("https://api.baostory.fun/api/stories/create", {
                 method: "POST",
                 headers: {
@@ -252,17 +237,13 @@ export default function CreateStory() {
                 },
                 body: JSON.stringify(preparePayload()),
             });
-
             if (!initResponse.ok) {
                 throw new Error(`Yêu cầu thất bại với mã lỗi ${initResponse.status}. Vui lòng kiểm tra lại cấu hình Route Backend!`);
             }
-
             const initResult = await initResponse.json();
-
-            // Nếu Backend xử lý chuỗi MySQL + MongoDB thành công
             if (initResult.success) {
                 toast.success("Chúc mừng! Tác phẩm mới đã được khởi tạo thành công trên BaoStory.");
-                navigate("/stories"); // Chuyển hướng về trang danh sách truyện
+                navigate("/stories");
             } else {
                 toast.error(initResult.message || "Khởi tạo tác phẩm thất bại.");
             }
@@ -327,11 +308,7 @@ export default function CreateStory() {
                                         {DEFAULT_COVERS.map((url, index) => {
                                             const isSelected = coverPreview === url;
                                             return (
-                                                <div
-                                                    key={index}
-                                                    onClick={() => handleSelectDefaultCover(url)} // Gọi hàm ở đây
-                                                    className={`relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${isSelected ? "border-violet-500 shadow-lg shadow-violet-500/20 scale-[1.02]" : "border-white/10 hover:border-white/30 opacity-70 hover:opacity-100"}`}
-                                                >
+                                                <div key={index} onClick={() => handleSelectDefaultCover(url)} className={`relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${isSelected ? "border-violet-500 shadow-lg shadow-violet-500/20 scale-[1.02]" : "border-white/10 hover:border-white/30 opacity-70 hover:opacity-100"}`}>
                                                     <img src={url} alt={`Mẫu ${index + 1}`} className="w-full h-full object-cover" />
                                                     {isSelected && (
                                                         <div className="absolute inset-0 bg-violet-600/30 flex items-center justify-center backdrop-blur-[2px]">
@@ -462,7 +439,7 @@ export default function CreateStory() {
                         <div className="mb-4">
                             <div className="flex gap-2">
                                 <input type="text" value={newGenre} onChange={(e) => setNewGenre(e.target.value)} placeholder="Nhập tên thể loại..." className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-violet-500 text-white" />
-                                <button onClick={handleCreateGenre} className="px-4 rounded-xl bg-violet-600 hover:bg-violet-700">
+                                <button onClick={handleCreateGenre} className="px-4 rounded-xl bg-violet-600 hover:bg-violet-700 font-semibold text-sm">
                                     Thêm
                                 </button>
                             </div>
@@ -474,10 +451,7 @@ export default function CreateStory() {
                                 const isSelected = selectedGenres.some((g) => g.id === genre.id);
                                 return (
                                     <div key={genre.id} onClick={() => toggleGenre(genre)} className={`group relative flex items-center justify-between p-2.5 text-sm rounded-xl border cursor-pointer transition-all ${isSelected ? "bg-violet-500/20 border-violet-500 text-violet-300 font-medium" : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10"}`}>
-                                        {/* 1. Đăng ký pr-8 để chữ không bao giờ đè lên nút xóa */}
                                         <span className="truncate pr-8 select-none">{genre.name}</span>
-
-                                        {/* 2. Bổ sung z-10 và pointer-events-auto để chắc chắn nút nhận diện hover/click */}
                                         <button type="button" onClick={(e) => handleDeleteGenre(e, genre)} className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-lg bg-red-500/20 hover:bg-red-600 text-red-300 hover:text-white transition-all opacity-0 group-hover:opacity-100 pointer-events-auto" title={`Xóa thể loại ${genre.name}`}>
                                             <X size={13} />
                                         </button>
@@ -490,7 +464,7 @@ export default function CreateStory() {
                             <button onClick={() => setShowGenreModal(false)} className="px-4 py-2 text-sm rounded-xl bg-white/5 hover:bg-white/10">
                                 Hủy
                             </button>
-                            <button onClick={() => setShowGenreModal(false)} className="px-4 py-2 text-sm rounded-xl bg-gradient-to-r from-blue-600 to-violet-600">
+                            <button onClick={() => setShowGenreModal(false)} className="px-4 py-2 text-sm rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 font-semibold">
                                 Xác nhận
                             </button>
                         </div>
