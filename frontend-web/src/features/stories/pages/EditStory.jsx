@@ -31,6 +31,9 @@ export default function EditStory() {
     const [loadingStories, setLoadingStories] = useState(false);
     const [isReversing, setIsReversing] = useState(false);
 
+    // Kiểm tra truyện phái sinh
+    const [isDerivative, setIsDerivative] = useState(false);
+
     // =========================
     // API: TẢI DANH SÁCH THỂ LOẠI
     // =========================
@@ -115,6 +118,11 @@ export default function EditStory() {
                     setTitle(storyData.title || "");
                     setSummary(storyData.description || "");
                     setCoverPreview(storyData.cover_image || null);
+
+                    // Kiểm tra xem có phải truyện phái sinh không
+                    if (storyData.original_story_id || storyData.originalStoryId) {
+                        setIsDerivative(true);
+                    }
 
                     if (storyData.genres && activeGenres.length > 0) {
                         const storyGenresNames = storyData.genres.split(", ");
@@ -352,62 +360,64 @@ export default function EditStory() {
                                 </div>
                             </div>
 
-                            {/* AI REVERSE WORKSPACE */}
-                            <div className="space-y-4">
-                                <div className="flex gap-3">
-                                    <CustomSelect
-                                        className="flex-1"
-                                        value={selectedStory}
-                                        loading={loadingStories}
-                                        placeholder="Chọn tác phẩm..."
-                                        onChange={setSelectedStory}
-                                        options={userStories.map((story) => ({
-                                            value: story.id,
-                                            label: story.title,
-                                        }))}
-                                    />
-                                    <button type="button" onClick={handleReverseDescription} disabled={isReversing} className="h-12 whitespace-nowrap rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 font-semibold transition hover:scale-[1.02] active:scale-95 disabled:opacity-50">
-                                        {isReversing ? <Loader2 className="animate-spin" size={18} /> : "Đảo ngược"}
-                                    </button>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    {/* Khung 1: Ý tưởng gốc */}
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center justify-between px-1">
-                                            <button type="button" onClick={() => handleCopy("original", reverseIdea)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:bg-violet-600 hover:text-white transition-all text-xs">
-                                                {copied === "original" ? <Check size={14} /> : <Copy size={14} />}
-                                            </button>
-                                        </div>
-                                        <textarea readOnly value={reverseIdea} placeholder="Ý tưởng gốc..." className="h-80 w-full custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm" />
+                            {/* AI REVERSE WORKSPACE: Chỉ hiển thị nếu không phải truyện phái sinh */}
+                            {!isDerivative && (
+                                <div className="space-y-4">
+                                    <div className="flex gap-3">
+                                        <CustomSelect
+                                            className="flex-1"
+                                            value={selectedStory}
+                                            loading={loadingStories}
+                                            placeholder="Chọn tác phẩm..."
+                                            onChange={setSelectedStory}
+                                            options={userStories.map((story) => ({
+                                                value: story.id,
+                                                label: story.title,
+                                            }))}
+                                        />
+                                        <button type="button" onClick={handleReverseDescription} disabled={isReversing} className="h-12 whitespace-nowrap rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 font-semibold transition hover:scale-[1.02] active:scale-95 disabled:opacity-50">
+                                            {isReversing ? <Loader2 className="animate-spin" size={18} /> : "Đảo ngược"}
+                                        </button>
                                     </div>
 
-                                    {/* Khung 2: Ý tưởng đảo ngược (AI) */}
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center justify-between px-1">
-                                            <div className="flex items-center gap-1.5">
-                                                {storyPlanning && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setSummary(storyPlanning);
-                                                            toast.success("Đã áp dụng ý tưởng AI vào mô tả truyện!");
-                                                        }}
-                                                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-violet-500/30 bg-violet-600 text-white text-xs font-semibold hover:bg-violet-500 transition-all shadow-md"
-                                                        title="Sử dụng kết quả này làm mô tả truyện"
-                                                    >
-                                                        <Check size={14} />
-                                                    </button>
-                                                )}
-                                                <button type="button" onClick={() => handleCopy("reverse", storyPlanning)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:bg-violet-600 hover:text-white transition-all text-xs">
-                                                    {copied === "reverse" ? <Check size={14} /> : <Copy size={14} />}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {/* Khung 1: Ý tưởng gốc */}
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center justify-between px-1">
+                                                <button type="button" onClick={() => handleCopy("original", reverseIdea)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:bg-violet-600 hover:text-white transition-all text-xs">
+                                                    {copied === "original" ? <Check size={14} /> : <Copy size={14} />}
                                                 </button>
                                             </div>
+                                            <textarea readOnly value={reverseIdea} placeholder="Ý tưởng gốc..." className="h-80 w-full custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm" />
                                         </div>
-                                        <textarea readOnly value={storyPlanning} placeholder="Ý tưởng đảo ngược..." className="h-80 w-full custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm" />
+
+                                        {/* Khung 2: Ý tưởng đảo ngược (AI) */}
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center justify-between px-1">
+                                                <div className="flex items-center gap-1.5">
+                                                    {storyPlanning && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setSummary(storyPlanning);
+                                                                toast.success("Đã áp dụng ý tưởng AI vào mô tả truyện!");
+                                                            }}
+                                                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-violet-500/30 bg-violet-600 text-white text-xs font-semibold hover:bg-violet-500 transition-all shadow-md"
+                                                            title="Sử dụng kết quả này làm mô tả truyện"
+                                                        >
+                                                            <Check size={14} />
+                                                        </button>
+                                                    )}
+                                                    <button type="button" onClick={() => handleCopy("reverse", storyPlanning)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:bg-violet-600 hover:text-white transition-all text-xs">
+                                                        {copied === "reverse" ? <Check size={14} /> : <Copy size={14} />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <textarea readOnly value={storyPlanning} placeholder="Ý tưởng đảo ngược..." className="h-80 w-full custom-scroll resize-none rounded-2xl border border-white/10 bg-white/5 p-4 text-sm" />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
 

@@ -33,6 +33,9 @@ export default function ChapterEditorPage() {
     const autoSaveTimerRef = useRef(null);
     const wordCount = content.trim() ? content.trim().split(/\s+/).filter(Boolean).length : 0;
 
+    // State kiểm tra truyện phái sinh
+    const [isDerivative, setIsDerivative] = useState(false);
+
     const buildHighlightedDiff = (original = "", polished = "") => {
         if (!original || !polished) {
             setHighlightedAIElements([<span key="default">{polished}</span>]);
@@ -100,22 +103,29 @@ export default function ChapterEditorPage() {
     };
 
     // =========================================================================
-    // 1. API: TẢI THÔNG TIN CHƯƠNG TỪ BACKEND
+    // 1. API: TẢI THÔNG TIN CHƯƠNG VÀ CHI TIẾT TRUYỆN (KIỂM TRA PHÁI SINH)
     // =========================================================================
     const loadChapter = async () => {
         try {
             setLoading(true);
             const token = localStorage.getItem("token");
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const res = await axios.get(`${API_BASE_URL}/chapters/display-chapter/${storyId}/${chapterNumber}`, config);
-            const data = res.data.data || {};
 
+            const [chapterRes, storyRes] = await Promise.all([axios.get(`${API_BASE_URL}/chapters/display-chapter/${storyId}/${chapterNumber}`, config), axios.get(`${API_BASE_URL}/stories/${storyId}`, config).catch(() => null)]);
+
+            const data = chapterRes.data.data || {};
             setChapter(data);
             setChapterTitle(data.title || `Chương ${chapterNumber}`);
             setContent(data.content || "");
 
             if (data.updatedAt) {
                 setUpdatedAt(formatShortTime(data.updatedAt));
+            }
+
+            if (storyRes && storyRes.data) {
+                const storyData = storyRes.data.data || storyRes.data;
+
+                setIsDerivative(Boolean(storyData.original_story_id));
             }
         } catch (err) {
             console.error("Lỗi khi tải thông tin chương:", err);
@@ -126,7 +136,6 @@ export default function ChapterEditorPage() {
             setLoading(false);
         }
     };
-
     // =========================================================================
     // 2. API: LƯU THỦ CÔNG & TẠO PHIÊN BẢN SNAPSHOT LỊCH SỬ
     // =========================================================================
@@ -354,10 +363,10 @@ export default function ChapterEditorPage() {
     };
 
     // =========================================================================
-    // AI GỢI Ý NỘI DUNG CHƯƠNG
+    // AI GỢI Ý NỘI DUNG CHƯƠNG (Chỉ hoạt động khi là truyện phái sinh)
     // =========================================================================
     const handlePlotSuggest = async () => {
-        if (!storyId || !chapterNumber) return;
+        if (!storyId || !chapterNumber || !isDerivative) return;
 
         try {
             setIsPlotLoading(true);
@@ -466,19 +475,22 @@ export default function ChapterEditorPage() {
                             )}
                         </button>
 
-                        <button onClick={handlePlotSuggest} disabled={isPlotLoading} className="px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2 active:scale-95 shadow-md bg-gradient-to-r from-blue-600 to-violet-600 text-white hover:from-blue-500 hover:to-violet-500 border border-white/10 shadow-blue-500/10 disabled:opacity-50">
-                            {isPlotLoading ? (
-                                <>
-                                    <Loader2 size={14} className="animate-spin" />
-                                    <span>AI đang viết gợi ý...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles size={14} />
-                                    <span>Gợi ý nội dung chương</span>
-                                </>
-                            )}
-                        </button>
+                        {/* NÚT GỢI Ý NỘI DUNG CHƯƠNG: Chỉ hiện khi LÀ TRUYỆN PHÁI SINH (isDerivative) */}
+                        {isDerivative && (
+                            <button onClick={handlePlotSuggest} disabled={isPlotLoading} className="px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2 active:scale-95 shadow-md bg-gradient-to-r from-blue-600 to-violet-600 text-white hover:from-blue-500 hover:to-violet-500 border border-white/10 shadow-blue-500/10 disabled:opacity-50">
+                                {isPlotLoading ? (
+                                    <>
+                                        <Loader2 size={14} className="animate-spin" />
+                                        <span>AI đang viết gợi ý...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles size={14} />
+                                        <span>Gợi ý nội dung chương</span>
+                                    </>
+                                )}
+                            </button>
+                        )}
                     </div>
                 </div>
             </header>
@@ -536,10 +548,10 @@ export default function ChapterEditorPage() {
                 {/* CỘT PHẢI: KHUNG SOẠN THẢO DUY NHẤT */}
                 <div className="flex-1 h-full flex flex-col min-h-0 items-center justify-center">
                     <div className="w-full max-w-[1100px] h-full flex flex-col min-h-0 relative">
-                        <div className="flex-1 h-full rounded-3xl border border-white/5 bg-[#10151E] shadow-2xl shadow-black/40 overflow-y-auto custom-scroll flex flex-col">
-                            <div className="flex items-center justify-between border-b border-white/5 px-6 py-3 select-none flex-none">
-                                <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
-                                    <BookOpen size={14} className="text-slate-600" />
+                        <div className="flex-1 h-full rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-2xl shadow-black/40 overflow-y-auto custom-scroll flex flex-col">
+                            <div className="flex items-center justify-between border-b border-[var(--border-color)] px-6 py-3 select-none flex-none bg-[var(--bg-secondary)]">
+                                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
+                                    <BookOpen size={14} style={{ color: "var(--text-muted)" }} />
                                     <span>Nội dung tác phẩm</span>
                                 </div>
 
@@ -556,18 +568,21 @@ export default function ChapterEditorPage() {
                                 </div>
                             </div>
 
-                            <div className="flex-1 px-8 md:px-10 py-6">
-                                <textarea value={content} onChange={(e) => setContent(e.target.value)} disabled={isAILoading} placeholder="Bắt đầu gõ nội dung chương tại đây..." className={`w-full h-full bg-transparent text-slate-200 text-base leading-relaxed tracking-[0.01em] font-normal resize-none border-none focus:ring-0 p-0 placeholder-slate-700 focus:outline-none ${isAILoading ? "opacity-30 cursor-not-allowed" : ""}`} />
+                            <div className="flex-1 px-8 md:px-10 py-6" style={{ backgroundColor: "var(--bg-card)" }}>
+                                <textarea id="chapter-content" name="content" value={content} onChange={(e) => setContent(e.target.value)} disabled={isAILoading} placeholder="Bắt đầu gõ nội dung chương tại đây..." style={{ backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }} className={`w-full h-full text-base leading-relaxed tracking-[0.01em] font-normal resize-none border-none focus:ring-0 p-0 focus:outline-none ${isAILoading ? "opacity-30 cursor-not-allowed" : ""}`} />
                             </div>
 
-                            <div className="flex items-center justify-between border-t border-white/5 px-6 py-3 bg-black/20 select-none flex-none text-xs text-slate-400">
+                            <div className="flex items-center justify-between border-t border-[var(--border-color)] px-6 py-3 select-none flex-none text-xs" style={{ backgroundColor: "var(--bg-secondary)", color: "var(--text-secondary)" }}>
                                 <div className="flex items-center gap-4">
                                     <span className="flex items-center gap-1.5">
-                                        <FileText size={14} className="text-slate-500" />
-                                        <b className="text-slate-300 font-semibold">{wordCount.toLocaleString()}</b> từ
+                                        <FileText size={14} style={{ color: "var(--text-muted)" }} />
+                                        <b className="font-semibold" style={{ color: "var(--text-primary)" }}>
+                                            {wordCount.toLocaleString()}
+                                        </b>{" "}
+                                        từ
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-2 text-xs text-slate-500">
+                                <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
                                     <CalendarDays size={13} />
                                     <span>Cập nhật: {updatedAt}</span>
                                     <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium">

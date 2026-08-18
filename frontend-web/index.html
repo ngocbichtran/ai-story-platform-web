@@ -7,8 +7,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>BaoStory</title>
         <script>
-            // The existing interface is the canonical dark design. Apply it before
-            // React mounts so the page never flashes the opposite theme.
+            // Dark mode is the default. Apply a previously chosen light theme before
+            // React mounts so there is no flash of the opposite theme.
             if (localStorage.getItem("theme") !== "light") {
                 document.documentElement.classList.add("dark");
                 document.documentElement.style.colorScheme = "dark";

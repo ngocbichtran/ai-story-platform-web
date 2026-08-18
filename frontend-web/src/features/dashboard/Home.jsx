@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { Plus, BookOpen, Loader2 } from "lucide-react";
+import { Plus, Trash2, BookOpen, Loader2 } from "lucide-react";
 import banner from "../../assets/images/banner.png";
 import toast from "react-hot-toast";
 import axios from "axios";
@@ -139,7 +139,7 @@ export default function Home() {
                             </div>
 
                             {/* 2. KHU VỰC NỘI DUNG CHỮ BÊN PHẢI */}
-                            <div className="flex-1 min-w-0 flex flex-col justify-between h-32 py-0.5">
+                            <div className="flex-1 min-w-0 flex flex-col justify-between h-40 py-0.5">
                                 <div className="space-y-1.5">
                                     <h3 className="text-sm md:text-base font-extrabold text-white group-hover:text-violet-400 transition-colors line-clamp-2 leading-snug tracking-wide cursor-pointer" title={story.title}>
                                         {story.title}
@@ -150,8 +150,8 @@ export default function Home() {
                                 {/* HÀNG THÔNG TIN DƯỚI ĐÁY VÀ NÚT BẤM CHUYỂN HƯỚNG */}
                                 <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/5">
                                     {/* NÚT XÓA KÍCH HOẠT MODAL */}
-                                    <button onClick={() => setStoryToDelete(story)} disabled={deletingId === story.id} className="group/btn-delete h-9 px-4 rounded-xl border border-white/5 bg-white/5 text-slate-400 text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 hover:shadow-[0_0_15px_rgba(239,68,68,0.1)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95">
-                                        <span>{deletingId === story.id ? "Đang xóa..." : "Xóa"}</span>
+                                    <button onClick={() => setStoryToDelete(story)} className="p-2 rounded-lg bg-white/5 hover:text-red-400 transition" title="Xóa tác phẩm">
+                                        <Trash2 size={14} />
                                     </button>
 
                                     {/* NÚT ĐIỀU HƯỚNG WORKSPACE */}

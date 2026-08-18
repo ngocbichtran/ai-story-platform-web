@@ -25,16 +25,16 @@
 ========================= */
 
 html:not(.dark) {
-    --bg-primary: #f5f3ff;
-    --bg-secondary: #ede9fe;
+    --bg-primary: #f8faff;
+    --bg-secondary: #eef2ff;
     --bg-card: #ffffff;
     --bg-input: #ffffff;
 
-    --text-primary: #2e1065;
-    --text-secondary: #6d28d9;
-    --text-muted: #a78bfa;
+    --text-primary: #111827;
+    --text-secondary: #334155;
+    --text-muted: #52627a;
 
-    --border-color: #ddd6fe;
+    --border-color: #cbd5e1;
 
     --primary-color: #7c3aed;
 }

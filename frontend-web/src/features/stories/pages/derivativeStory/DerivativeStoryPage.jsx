@@ -28,11 +28,11 @@ export default function DerivativeStoryPage() {
     const [aiResult, setAiResult] = useState(null);
     const [aiPlansResult, setAiPlansResult] = useState(null);
     const [plans, setPlans] = useState([
-        { chapterNumber: 1, title: "Chương 1", summary: "Chưa có nội dung..." },
-        { chapterNumber: 2, title: "Chương 2", summary: "Chưa có nội dung..." },
-        { chapterNumber: 3, title: "Chương 3", summary: "Chưa có nội dung..." },
-        { chapterNumber: 4, title: "Chương 4", summary: "Chưa có nội dung..." },
-        { chapterNumber: 5, title: "Chương 5", summary: "Chưa có nội dung..." },
+        { chapterNumber: 1, title: "Chương 1", summary: "Chưa có nội dung...", purpose: "", conflict: "", endingHook: "" },
+        { chapterNumber: 2, title: "Chương 2", summary: "Chưa có nội dung...", purpose: "", conflict: "", endingHook: "" },
+        { chapterNumber: 3, title: "Chương 3", summary: "Chưa có nội dung...", purpose: "", conflict: "", endingHook: "" },
+        { chapterNumber: 4, title: "Chương 4", summary: "Chưa có nội dung...", purpose: "", conflict: "", endingHook: "" },
+        { chapterNumber: 5, title: "Chương 5", summary: "Chưa có nội dung...", purpose: "", conflict: "", endingHook: "" },
     ]);
     const [fullCharacterData, setFullCharacterData] = useState({});
     const [charEditForm, setCharEditForm] = useState({
@@ -58,10 +58,7 @@ export default function DerivativeStoryPage() {
                 });
 
                 const allStories = response.data?.data || response.data || [];
-
-                // Chỉ giữ lại những truyện đã có ít nhất 1 chương (dựa vào chapter_count trả về từ API)
                 const validStories = allStories.filter((s) => s.chapter_count && s.chapter_count > 0);
-
                 setStoriesList(validStories);
             } catch (err) {
                 toast.error("Không thể tải danh sách truyện.");
@@ -90,11 +87,9 @@ export default function DerivativeStoryPage() {
             const headers = { Authorization: `Bearer ${token}` };
 
             try {
-                // Lấy danh sách chương trước
                 const chaptersRes = await axios.get(`https://api.baostory.fun/api/chapters/${selectedStory}/chapters`, { headers });
                 const chList = chaptersRes.data?.data || chaptersRes.data || [];
 
-                // KIỂM TRA: Nếu truyện không có chương, báo lỗi ngay lập tức
                 if (!chList || chList.length === 0) {
                     toast.error("Truyện này không có chương, không thể tạo phái sinh!");
                     setSelectedStory("");
@@ -103,7 +98,6 @@ export default function DerivativeStoryPage() {
                     return;
                 }
 
-                // Nếu hợp lệ mới tiếp tục tải các dữ liệu khác
                 const [detailRes, outlineRes, charRes] = await Promise.all([axios.get(`https://api.baostory.fun/api/stories/${selectedStory}`, { headers }).catch(() => ({})), axios.get(`https://api.baostory.fun/api/storyOutline/${selectedStory}/outline`, { headers }).catch(() => ({})), axios.get(`https://api.baostory.fun/api/characters/${selectedStory}/list`, { headers }).catch(() => ({}))]);
 
                 setActiveStoryDetail(detailRes.data?.data || null);
@@ -149,15 +143,6 @@ export default function DerivativeStoryPage() {
             setAiResult(null);
         }
     }, [selectedCharacter, charactersList]);
-
-    const renderGenres = () => {
-        if (!activeStoryDetail?.genres) return <span className="text-xs text-slate-500">Chưa có thể loại</span>;
-        return activeStoryDetail.genres.split(",").map((genreName, index) => (
-            <span key={index} className="rounded-lg bg-blue-500/10 border border-blue-500/20 px-2.5 py-0.5 text-xs text-blue-400 font-medium">
-                {genreName.trim()}
-            </span>
-        ));
-    };
 
     useEffect(() => {
         let timer;
@@ -236,11 +221,33 @@ export default function DerivativeStoryPage() {
 
     const handleSuggestChapterPlans = async () => {
         if (!selectedStory) return toast.error("Thiếu thông tin bộ truyện!");
+        if (!selectedChapterNumbers || selectedChapterNumbers.length === 0) {
+            return toast.error("Vui lòng chọn ít nhất một chương ở bước 1 làm đầu vào!");
+        }
+        if (!derivativeCharacters || derivativeCharacters.length === 0) {
+            return toast.error("Vui lòng lưu ít nhất một nhân vật phái sinh ở bước 2!");
+        }
+
         setIsLoading(true);
         setCountdown(20);
         try {
             const token = localStorage.getItem("accessToken") || localStorage.getItem("token") || "";
-            const res = await axios.post(`https://api.baostory.fun/api/chapterPlan/suggest`, { storyId: selectedStory, chapterNumber: 1 }, { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } });
+
+            const res = await axios.post(
+                `https://api.baostory.fun/api/chapterPlan/suggest`,
+                {
+                    storyId: selectedStory,
+                    chapterNumber: selectedChapterNumbers,
+                    characters: derivativeCharacters,
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+
             let rawData = res.data?.data?.data || res.data?.data || res.data;
             if (Array.isArray(rawData) && rawData.length > 0 && Array.isArray(rawData[0])) {
                 rawData = rawData[0];
@@ -254,7 +261,7 @@ export default function DerivativeStoryPage() {
             }
         } catch (err) {
             console.error("Lỗi gọi n8n kế hoạch chương:", err);
-            toast.error("Hết token.");
+            toast.error("Hết token hoặc lỗi kết nối!");
         } finally {
             setIsLoading(false);
             setCountdown(20);
@@ -284,11 +291,13 @@ export default function DerivativeStoryPage() {
                 return;
             }
             const newPlans = aiPlansResult.map((item, idx) => {
-                const combinedDetails = `Tóm tắt: ${item.summary || item.background || ""}\nMục đích: ${item.purpose || ""}\nXung đột: ${item.conflict || ""}\nHook: ${item.endingHook || ""}`;
                 return {
                     chapterNumber: item.chapterNumber || idx + 1,
                     title: item.title || `Chương ${idx + 1}`,
-                    summary: combinedDetails.trim(),
+                    summary: item.summary || item.background || "",
+                    purpose: item.purpose || "",
+                    conflict: item.conflict || "",
+                    endingHook: item.endingHook || "",
                 };
             });
             setPlans(newPlans);
@@ -296,27 +305,6 @@ export default function DerivativeStoryPage() {
         }
 
         setShowAcceptModal(false);
-    };
-
-    const handleSaveCharacterProfile = () => {
-        if (!charEditForm.name.trim()) {
-            return toast.error("Vui lòng nhập tên nhân vật!");
-        }
-        const characterPayload = {
-            ...fullCharacterData,
-            ...charEditForm,
-            tempId: selectedCharacter || Date.now(),
-        };
-        setDerivativeCharacters((prev) => {
-            const index = prev.findIndex((c) => c.tempId === characterPayload.tempId);
-            if (index >= 0) {
-                const updated = [...prev];
-                updated[index] = characterPayload;
-                return updated;
-            }
-            return [...prev, characterPayload];
-        });
-        toast.success(`Đã thêm nhân vật "${charEditForm.name}" vào danh sách tạm!`);
     };
 
     const handleCreateDerivativeStory = async () => {
@@ -346,6 +334,7 @@ export default function DerivativeStoryPage() {
                 characters: derivativeCharacters,
                 chapterPlans: plans,
             };
+
             await axios.post("https://api.baostory.fun/api/derivativeStory/derivative", payload, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -364,6 +353,27 @@ export default function DerivativeStoryPage() {
         }
     };
 
+    const handleSaveCharacterProfile = () => {
+        if (!charEditForm.name.trim()) {
+            return toast.error("Vui lòng nhập tên nhân vật!");
+        }
+        const characterPayload = {
+            ...fullCharacterData,
+            ...charEditForm,
+            tempId: selectedCharacter || Date.now(),
+        };
+        setDerivativeCharacters((prev) => {
+            const index = prev.findIndex((c) => c.tempId === characterPayload.tempId);
+            if (index >= 0) {
+                const updated = [...prev];
+                updated[index] = characterPayload;
+                return updated;
+            }
+            return [...prev, characterPayload];
+        });
+        toast.success(`Đã thêm nhân vật "${charEditForm.name}" vào danh sách tạm!`);
+    };
+
     const displayPlans = aiPlansResult || plans;
 
     return (
@@ -372,13 +382,12 @@ export default function DerivativeStoryPage() {
                 <button onClick={() => setShowCancelModal(true)} className="text-xs text-red-400 hover:text-red-300 underline transition font-medium">
                     Hủy quá trình
                 </button>
-                <div className="flex-none px-8 py-3 border-b border-white/5 bg-black/20 flex items-center justify-between select-none">
-                    <h2 className="text-base font-bold text-white flex items-center gap-2">
-                        {step === 1 && "Bước 1: Chọn truyện gốc, chương nguồn & Đặt tên"}
-                        {step === 2 && "Bước 2: Chọn nhân vật & Biến đổi"}
-                        {step === 3 && "Bước 3: Kế hoạch chương (5 kế hoạch)"}
-                    </h2>
-                </div>
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    {step === 1 && "Bước 1: Chọn truyện gốc, chương nguồn & Đặt tên"}
+                    {step === 2 && "Bước 2: Chọn nhân vật & Biến đổi"}
+                    {step === 3 && "Bước 3: Kế hoạch chương (5 kế hoạch)"}
+                </h2>
+                <div />
             </header>
             <div className="flex-none w-full bg-white/5 h-1.5 flex z-20">
                 <div className="bg-gradient-to-r from-blue-600 to-violet-600 transition-all duration-500" style={{ width: `${(step / 3) * 100}%` }} />
@@ -388,7 +397,6 @@ export default function DerivativeStoryPage() {
                     <div className="flex-1 min-h-0 flex flex-col justify-center p-6">
                         {step === 1 && (
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch h-full max-w-7xl mx-auto w-full">
-                                {/* Cột chọn tác phẩm gốc */}
                                 <div className="md:col-span-4 rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-4 flex flex-col min-h-[350px]">
                                     <div className="text-[10px] uppercase font-black tracking-widest text-[#8b919e] mb-2.5 flex-none flex justify-between items-center">
                                         <span className="flex items-center gap-2">
@@ -416,12 +424,10 @@ export default function DerivativeStoryPage() {
                                     </div>
                                 </div>
 
-                                {/* Cột hiển thị thông tin & chọn chương nguồn đầu vào */}
                                 <div className="md:col-span-8 rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-6 flex flex-col justify-between relative overflow-hidden min-h-[350px]">
                                     <div className="space-y-4 overflow-y-auto custom-scroll pr-1">
                                         {activeStoryDetail ? (
                                             <div className="flex flex-col gap-4 relative z-10">
-                                                {/* PHẦN CHỌN CHƯƠNG NGUỒN LINH HOẠT */}
                                                 <div className="space-y-3">
                                                     <div className="flex items-center justify-between">
                                                         <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">
@@ -444,7 +450,6 @@ export default function DerivativeStoryPage() {
                                                         </div>
                                                     </div>
 
-                                                    {/* Danh sách danh mục chương dạng checkbox */}
                                                     <div className="max-h-70 overflow-y-auto custom-scroll space-y-1.5 p-2.5 rounded-xl border border-white/5 bg-black/30">
                                                         {isFetchingChapters ? (
                                                             <div className="text-xs text-slate-500 text-center py-4 italic">Đang tải danh sách chương...</div>
@@ -515,7 +520,6 @@ export default function DerivativeStoryPage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch flex-1 min-h-0">
-                                    {/* CỘT TRÁI: KẾT QUẢ AI */}
                                     <div className="md:col-span-6 rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-4 flex flex-col justify-between relative overflow-hidden min-h-0">
                                         <div className="flex-1 flex flex-col min-h-0">
                                             <div className="text-[10px] uppercase font-black tracking-widest text-[#8b919e] mb-2.5 flex items-center justify-between flex-none">
@@ -528,7 +532,8 @@ export default function DerivativeStoryPage() {
                                                         <RotateCcw size={13} className={isLoading ? "animate-spin" : ""} />
                                                         <span>{isLoading ? `Đang xử lý (${countdown}s)` : "Chạy AI n8n"}</span>
                                                     </button>
-                                                    <button type="button" onClick={() => setShowAcceptModal(true)} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-600/20 text-purple-300 border border-purple-500/30 flex items-center gap-1.5">
+                                                    {/* Nút chấp nhận ở Bước 2: Chỉ sáng khi đã có aiResult */}
+                                                    <button type="button" disabled={!aiResult} onClick={() => setShowAcceptModal(true)} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-600/20 text-purple-300 border border-purple-500/30 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
                                                         <Check size={13} /> Chấp nhận
                                                     </button>
                                                 </div>
@@ -570,7 +575,6 @@ export default function DerivativeStoryPage() {
                                         </div>
                                     </div>
 
-                                    {/* CỘT PHẢI: CHỈNH SỬA / LƯU */}
                                     <div className="md:col-span-6 rounded-2xl bg-[#131720]/80 border border-[#1e2633] p-4 flex flex-col justify-between relative overflow-hidden min-h-0">
                                         <div className="flex-1 flex flex-col min-h-0">
                                             <div className="text-[10px] uppercase font-black tracking-widest text-[#8b919e] mb-2.5 flex items-center justify-between flex-none">
@@ -638,7 +642,8 @@ export default function DerivativeStoryPage() {
                                                     <RotateCcw size={13} className={isLoading ? "animate-spin" : ""} />
                                                     <span>{isLoading ? `Đang tạo (${countdown}s)` : "Tạo lại (AI)"}</span>
                                                 </button>
-                                                <button type="button" onClick={() => setShowAcceptModal(true)} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-600/20 text-purple-300 border border-purple-500/30 flex items-center gap-1.5">
+                                                {/* Nút chấp nhận ở Bước 3: Chỉ sáng khi đã có aiPlansResult */}
+                                                <button type="button" disabled={!aiPlansResult || aiPlansResult.length === 0} onClick={() => setShowAcceptModal(true)} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-600/20 text-purple-300 border border-purple-500/30 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
                                                     <Check size={13} /> Chấp nhận
                                                 </button>
                                             </div>
@@ -654,9 +659,6 @@ export default function DerivativeStoryPage() {
                                                     <div key={index} className="p-3.5 rounded-xl bg-black/20 border border-white/5 space-y-2">
                                                         <h4 className="text-[11px] font-bold uppercase tracking-wider text-purple-400">{displayTitle}</h4>
                                                         <div className="space-y-1.5 text-slate-300 leading-relaxed">
-                                                            <p className="whitespace-pre-line">
-                                                                <strong className="text-slate-400">Tóm tắt:</strong> {plan.summary || plan.background || "Chưa có tóm tắt..."}
-                                                            </p>
                                                             {plan.purpose && (
                                                                 <p className="whitespace-pre-line">
                                                                     <strong className="text-slate-400">Mục đích:</strong> {plan.purpose}
@@ -687,10 +689,11 @@ export default function DerivativeStoryPage() {
                                             </span>
                                         </div>
 
-                                        <div className="space-y-3 text-xs">
+                                        <div className="space-y-3 text-xs overflow-y-auto custom-scroll pr-2 flex-1 max-h-[600px]">
                                             {plans.map((plan, index) => (
-                                                <div key={index} className="p-3 rounded-xl bg-[#181d29]/50 border border-white/10 space-y-2.5">
+                                                <div key={index} className="p-3.5 rounded-xl bg-[#181d29]/50 border border-white/10 space-y-3">
                                                     <h4 className="text-[11px] font-bold uppercase tracking-wider text-blue-400">Chỉnh sửa kế hoạch {index + 1}</h4>
+
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] text-slate-400 font-semibold">Tiêu đề chương</label>
                                                         <input
@@ -704,16 +707,43 @@ export default function DerivativeStoryPage() {
                                                             className="w-full bg-black/40 border border-white/10 focus:border-blue-500 rounded-lg p-2 text-slate-200 outline-none"
                                                         />
                                                     </div>
+
                                                     <div className="space-y-1">
-                                                        <label className="text-[10px] text-slate-400 font-semibold">Tóm tắt & Chi tiết</label>
+                                                        <label className="text-[10px] text-slate-400 font-semibold">Mục đích</label>
                                                         <textarea
-                                                            value={plan.summary || ""}
+                                                            value={plan.purpose || ""}
                                                             onChange={(e) => {
                                                                 const updated = [...plans];
-                                                                updated[index].summary = e.target.value;
+                                                                updated[index].purpose = e.target.value;
                                                                 setPlans(updated);
                                                             }}
-                                                            className="w-full h-[150px] bg-black/40 border border-white/10 focus:border-blue-500 rounded-lg p-2.5 text-slate-200 resize-none outline-none overflow-y-auto custom-scroll"
+                                                            className="w-full h-[70px] bg-black/40 border border-white/10 focus:border-blue-500 rounded-lg p-2 text-slate-200 resize-none outline-none custom-scroll"
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] text-slate-400 font-semibold">Xung đột</label>
+                                                        <textarea
+                                                            value={plan.conflict || ""}
+                                                            onChange={(e) => {
+                                                                const updated = [...plans];
+                                                                updated[index].conflict = e.target.value;
+                                                                setPlans(updated);
+                                                            }}
+                                                            className="w-full h-[70px] bg-black/40 border border-white/10 focus:border-blue-500 rounded-lg p-2 text-slate-200 resize-none outline-none custom-scroll"
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] text-slate-400 font-semibold">Hook (Điểm thắt/Mở đầu)</label>
+                                                        <textarea
+                                                            value={plan.endingHook || ""}
+                                                            onChange={(e) => {
+                                                                const updated = [...plans];
+                                                                updated[index].endingHook = e.target.value;
+                                                                setPlans(updated);
+                                                            }}
+                                                            className="w-full h-[70px] bg-black/40 border border-white/10 focus:border-blue-500 rounded-lg p-2 text-slate-200 resize-none outline-none custom-scroll"
                                                         />
                                                     </div>
                                                 </div>

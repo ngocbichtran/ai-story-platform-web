@@ -43,44 +43,6 @@ export default function StoryList() {
         });
     }, [stories, search, activeTab]);
 
-    const handleDownloadStory = async (storyId, storyTitle) => {
-        try {
-            setDownloadingId(storyId);
-            toast.loading(`Đang tổng hợp "${storyTitle}"...`, { id: "downloading" });
-            const token = localStorage.getItem("token");
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-
-            const chaptersRes = await axios.get(`https://api.baostory.fun/api/chapters/story/${storyId}/chapters`, config);
-            const chaptersList = chaptersRes.data?.data || [];
-            chaptersList.sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
-
-            let allChaptersHtml = "";
-            for (const ch of chaptersList) {
-                const chNum = ch.chapterNumber || 1;
-                const detailRes = await axios.get(`https://api.baostory.fun/api/chapters/display-chapter/${storyId}/${chNum}`, config);
-                const chContent = detailRes.data?.data?.displayContent || "";
-                allChaptersHtml += `<h2 style="page-break-before: always;">Chương ${chNum}: ${ch.title || ""}</h2><p>${chContent.replace(/\n/g, "</p><p>")}</p>`;
-            }
-
-            const fullWordHtml = `<html><head><meta charset='utf-8'></head><body><h1>${storyTitle}</h1>${allChaptersHtml}</body></html>`;
-            const blob = new Blob(["\ufeff" + fullWordHtml], { type: "application/msword" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `${storyTitle}-full.doc`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            toast.dismiss("downloading");
-            toast.success("Tải xuống thành công!");
-        } catch (err) {
-            toast.dismiss("downloading");
-            toast.error("Lỗi khi tải truyện.");
-        } finally {
-            setDownloadingId(null);
-        }
-    };
-
     const confirmDeleteStory = async () => {
         if (!storyToDelete) return;
 
@@ -150,9 +112,6 @@ export default function StoryList() {
                                     <h3 className="font-bold text-white text-sm line-clamp-1">{story.title}</h3>
                                     <p className="text-xs text-slate-400 line-clamp-2">{story.description}</p>
                                     <div className="flex gap-2 mt-2">
-                                        <button onClick={() => handleDownloadStory(story.id, story.title)} className="p-2 rounded-lg bg-white/5 hover:text-emerald-400 transition" title="Tải xuống">
-                                            <Download size={14} />
-                                        </button>
                                         <button onClick={() => setStoryToDelete(story)} className="p-2 rounded-lg bg-white/5 hover:text-red-400 transition" title="Xóa tác phẩm">
                                             <Trash2 size={14} />
                                         </button>

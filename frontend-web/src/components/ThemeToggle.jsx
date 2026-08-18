@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 export default function ThemeToggle() {
     const [darkMode, setDarkMode] = useState(() => {
+        // Tối là giao diện mặc định; vẫn tôn trọng lựa chọn sáng của người dùng.
         return localStorage.getItem("theme") !== "light";
     });
 
