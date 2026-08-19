@@ -52,6 +52,8 @@ export default function LeftSidebar({ storyId, setActiveTab, setSelectedChapter 
             const [storyRes, chaptersRes] = await Promise.all([axios.get(`https://api.baostory.fun/api/stories/${storyId}`, config), axios.get(`https://api.baostory.fun/api/chapters/${storyId}/chapters`, config)]);
 
             if (storyRes.data?.success) setStory(storyRes.data.data);
+            console.log("CHAPTER API RESPONSE:", chaptersRes.data);
+            console.table(chaptersRes.data.data);
             if (chaptersRes.data?.success) setChaptersList(chaptersRes.data.data || []);
         } catch (error) {
             console.error("Lỗi tải danh mục:", error);
